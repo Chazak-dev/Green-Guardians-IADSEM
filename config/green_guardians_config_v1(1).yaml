@@ -1,0 +1,322 @@
+# GREEN GUARDIANS — TEAM CONFIG + INTERFACE CONTRACT v1
+# Proposed baseline for team approval before development starts.
+# Scope: AirSim prototype, fire + smoke only, 4-person team, active investigation.
+#
+# RULE: Once the team accepts v1, nobody silently changes a SHARED CONTRACT field,
+# state name, command name, coordinate convention, or confirmation rule.
+# Implementation-owner tuning values may be changed after testing, but the owner
+# must update this file and tell affected teammates.
+
+project:
+  name: Green Guardians
+  schema_version: "1.0"
+  hazards: [fire, smoke]
+  out_of_scope:
+    - garbage
+    - illegal_dumping
+    - pollution
+    - unauthorized_vehicle_detection
+    - precise_real_world_GPS_hazard_geolocation
+  pipeline: "AirSim camera -> AI -> Mission Controller -> investigation -> confirmation/alert -> dashboard"
+
+team_ownership:
+  person_1_marwa: "AI/CV — fire/smoke YOLO detection and re-check"
+  person_2: "AirSim — camera, drone status, patrol, investigation movement"
+  person_3: "Mission Controller — states, decisions, confirmation, alerts, logs, integration"
+  person_4: "Streamlit — dashboard and visualization"
+  shared_changes: "Anything under contracts, mission_states, commands, coordinates, or shared_policy requires team agreement."
+
+# -----------------------------------------------------------------------------
+# COMMUNICATION DECISION
+# -----------------------------------------------------------------------------
+communication:
+  architecture: "single Python application for v1"
+  transport: "in-process Python calls/queues; no HTTP/API required for the first prototype"
+  contract_format: "JSON-compatible objects"
+  python_validation: "Pydantic models or dataclasses in shared/"
+  timestamp_format: "ISO-8601 UTC, e.g. 2026-08-06T09:30:00Z"
+  id_format: "unique strings; UUID recommended"
+  rule: "Field names and enum values below must match exactly in every module."
+
+# -----------------------------------------------------------------------------
+# DEFINITIONS EVERYONE USES
+# -----------------------------------------------------------------------------
+definitions:
+  DETECTED: "AI saw fire/smoke in a patrol frame at or above the trigger threshold. This is a candidate, NOT yet a confirmed alert."
+  HAZARD_DETECTED: "Mission Controller accepted a candidate and is about to interrupt patrol."
+  INVESTIGATING: "Normal patrol is paused; the drone performs the agreed investigation maneuver and AI evaluates fresh investigation frames."
+  CONFIRMED: "The same hazard satisfies the confirmation rule on investigation frames. P3 creates one confirmed alert."
+  REJECTED: "The candidate fails the confirmation rule or investigation times out. No confirmed alert is created; patrol resumes."
+  RESUME_PATROL: "P2 continues the patrol from the saved waypoint/progress after investigation."
+  RETURN_HOME: "Stop normal mission and return toward the configured home/takeoff point."
+  bbox: "YOLO xyxy pixel coordinates [x_min, y_min, x_max, y_max], relative to the image_width/image_height carried with the event."
+
+mission_states:
+  allowed:
+    - IDLE
+    - TAKEOFF
+    - PATROL
+    - HAZARD_DETECTED
+    - INVESTIGATING
+    - CONFIRMED
+    - REJECTED
+    - RETURN_HOME
+    - LANDING
+    - LANDED
+    - ERROR
+  normal_flow: "IDLE -> TAKEOFF -> PATROL -> HAZARD_DETECTED -> INVESTIGATING -> CONFIRMED|REJECTED -> PATROL -> RETURN_HOME -> LANDING -> LANDED"
+  owner: person_3
+
+commands:
+  p3_to_p2:
+    - INVESTIGATE
+    - RESUME_PATROL
+    - RETURN_HOME
+    - LAND
+
+# -----------------------------------------------------------------------------
+# SHARED JSON CONTRACTS
+# The YAML mappings below show the EXACT JSON-compatible shape to exchange.
+# -----------------------------------------------------------------------------
+contracts:
+  camera_frame_metadata:
+    producer: person_2
+    consumers: [person_1, person_3]
+    fields:
+      schema_version: "string; required"
+      frame_id: "string; required; unique"
+      timestamp: "string; required; ISO-8601 UTC"
+      image_width: "integer; required"
+      image_height: "integer; required"
+      drone_position: "object {x,y,z}; required; AirSim NED metres"
+    example:
+      schema_version: "1.0"
+      frame_id: "frame-0042"
+      timestamp: "2026-08-06T09:30:00Z"
+      image_width: 640
+      image_height: 480
+      drone_position: {x: 12.0, y: 30.0, z: -10.0}
+
+  detection_event:
+    producer: person_1
+    consumers: [person_3]
+    displayed_by: person_4
+    fields:
+      schema_version: "string; required"
+      detection_id: "string; required; unique"
+      frame_id: "string; required"
+      timestamp: "string; required; copied from source frame"
+      hazard: "enum: fire | smoke"
+      confidence: "float 0.0..1.0"
+      bbox: "array of 4 integers: xyxy pixels"
+      image_width: "integer; required"
+      image_height: "integer; required"
+      image_path: "string or null; annotated evidence image"
+      source: "enum: patrol | investigation"
+    example:
+      schema_version: "1.0"
+      detection_id: "det-001"
+      frame_id: "frame-0042"
+      timestamp: "2026-08-06T09:30:00Z"
+      hazard: fire
+      confidence: 0.93
+      bbox: [150, 70, 420, 360]
+      image_width: 640
+      image_height: 480
+      image_path: "results/frame-0042.jpg"
+      source: patrol
+
+  drone_status:
+    producer: person_2
+    consumers: [person_3]
+    displayed_by: person_4
+    fields:
+      schema_version: "string; required"
+      timestamp: "string; required"
+      position: "object {x,y,z}; AirSim NED metres"
+      altitude_m: "float; positive height; for flat demo use approximately -z"
+      mission_state: "one exact value from mission_states.allowed"
+      current_waypoint_index: "integer or null"
+      camera_ok: "boolean"
+    example:
+      schema_version: "1.0"
+      timestamp: "2026-08-06T09:30:01Z"
+      position: {x: 12.0, y: 30.0, z: -10.0}
+      altitude_m: 10.0
+      mission_state: PATROL
+      current_waypoint_index: 2
+      camera_ok: true
+
+  navigation_command:
+    producer: person_3
+    consumer: person_2
+    fields:
+      schema_version: "string; required"
+      command_id: "string; required; unique"
+      timestamp: "string; required"
+      command: "enum: INVESTIGATE | RESUME_PATROL | RETURN_HOME | LAND"
+      detection_id: "string or null"
+      target_hint: "object or null; bbox + image dimensions, NOT a claimed GPS location"
+    example:
+      schema_version: "1.0"
+      command_id: "cmd-001"
+      timestamp: "2026-08-06T09:30:02Z"
+      command: INVESTIGATE
+      detection_id: "det-001"
+      target_hint:
+        bbox: [150, 70, 420, 360]
+        image_width: 640
+        image_height: 480
+
+  alert_event:
+    producer: person_3
+    consumer: person_4
+    fields:
+      schema_version: "string; required"
+      alert_id: "string; required; unique"
+      detection_id: "string; required; candidate that started investigation"
+      timestamp: "string; required; confirmation time"
+      hazard: "enum: fire | smoke"
+      status: "CONFIRMED only; rejected candidates are logged, not alerts"
+      confidence: "float; representative confirmation confidence"
+      evidence_image_path: "string or null"
+      observed_position: "object {x,y,z}; AirSim NED position of drone when evidence was captured; NOT exact hazard GPS"
+    example:
+      schema_version: "1.0"
+      alert_id: "alert-001"
+      detection_id: "det-001"
+      timestamp: "2026-08-06T09:30:07Z"
+      hazard: fire
+      status: CONFIRMED
+      confidence: 0.88
+      evidence_image_path: "results/frame-0047.jpg"
+      observed_position: {x: 14.0, y: 30.0, z: -10.0}
+
+# -----------------------------------------------------------------------------
+# SHARED BEHAVIOUR / DECISION POLICY
+# -----------------------------------------------------------------------------
+shared_policy:
+  candidate_trigger:
+    rule: "During PATROL, fire/smoke confidence >= 0.60 creates a candidate and triggers investigation."
+    threshold: 0.60
+  simultaneous_detections:
+    rule: "If several candidates occur in one frame, investigate the highest-confidence candidate first; log the others."
+  while_investigating:
+    rule: "Do not start a second investigation concurrently. Continue collecting evidence for the active candidate."
+  confirmation:
+    fresh_frames_to_check: 5
+    required_positive_frames: 3
+    confidence_threshold: 0.65
+    same_hazard_required: true
+    timeout_seconds: 15
+    rule: "CONFIRMED when the original hazard class appears in >=3 of 5 fresh investigation frames at confidence >=0.65 before timeout; otherwise REJECTED."
+  after_confirmed: "Create one alert, log it, command RESUME_PATROL."
+  after_rejected: "Log rejection, create no confirmed alert, command RESUME_PATROL."
+  duplicate_alert_cooldown_seconds: 30
+  duplicate_rule: "Same hazard within cooldown is logged but does not create repeated dashboard alerts."
+
+investigation:
+  meaning: "A real change from normal patrol, followed by fresh AI observations — not merely relabeling the original frame."
+  baseline_maneuver:
+    - "Pause patrol and remember the current waypoint/progress."
+    - "Hover/stabilize."
+    - "Use bbox horizontal position as a direction hint if P2's AirSim setup can do this reliably."
+    - "Make a small bounded approach (default 2 m) only when safe in the demo scene."
+    - "Capture 5 NEW camera frames for P1 at the configured rate."
+    - "P3 applies the confirmation rule."
+    - "Resume from saved patrol progress after CONFIRMED or REJECTED."
+  safety_fallback: "If directional approach is unreliable, use a small pre-tested investigation motion + hover; do not add complex 3-D fire geolocation just to satisfy v1."
+
+# -----------------------------------------------------------------------------
+# IMPLEMENTATION BASELINES — owners can tune after measurement
+# -----------------------------------------------------------------------------
+ai:
+  owner: person_1_marwa
+  model_path: "models/fire_smoke.pt"
+  classes: [fire, smoke]
+  imgsz: 640
+  iou_threshold: 0.45
+  inference_fps_target: 2
+  device: auto
+  tuning_rule: "Marwa may tune imgsz/IoU/FPS/model after evaluation; update this file and tell P2/P3 if latency or frame requirements change."
+
+camera:
+  owners: [person_1_marwa, person_2]
+  width: 640
+  height: 480
+  color_format: BGR
+  note: "OpenCV uses BGR. P2's adapter must deliver this format to P1. Camera resolution is NOT the same setting as YOLO imgsz."
+
+drone:
+  owner: person_2
+  coordinate_system: "AirSim NED metres: +x North/forward, +y East/right, +z Down; airborne z is normally negative relative to origin"
+  patrol_altitude_m: 10
+  patrol_speed_mps: 2
+  investigation_speed_mps: 1
+  investigation_approach_m: 2
+  patrol_waypoints_relative_ned:
+    - {x: 0, y: 0, z: -10}
+    - {x: 15, y: 0, z: -10}
+    - {x: 15, y: 15, z: -10}
+    - {x: 0, y: 15, z: -10}
+  tuning_rule: "P2 must test scene safety; altitude/speed/waypoints/approach may be tuned without a team vote, but changes must stay here and P1 must be told if camera view changes materially."
+
+localization:
+  v1_definition: "Report AirSim drone coordinates associated with captured evidence."
+  do_not_claim: "The reported x/y/z is the exact physical location of the fire/smoke."
+  future_optional_upgrade: "Estimate target 3-D/GPS location only after core demo works."
+
+dashboard:
+  owner: person_4
+  must_show:
+    - mission_state
+    - drone_position_and_altitude
+    - latest_fire_or_smoke_detection
+    - confidence
+    - evidence_image
+    - investigation_status
+    - confirmed_alert_history
+  refresh_seconds: 1
+
+files_and_folders:
+  ai: "P1 code"
+  drone: "P2 code"
+  backend: "P3 code"
+  dashboard: "P4 code"
+  shared: "schemas/interfaces/constants used across modules"
+  config: "this approved configuration and adjustable settings"
+  localization: "simple coordinate/location helpers; no complex geolocation required for v1"
+  models: "selected fire/smoke weights"
+  sample_data: "mock JSON/images matching these contracts so members work in parallel"
+  results: "generated annotated frames/logs/results; normally gitignored"
+  tests: "unit, contract, integration tests"
+  docs: "architecture/setup/demo documentation"
+  main_py: "P3-led entry point connecting modules"
+
+git_workflow:
+  main_branch: main
+  feature_branches:
+    person_1_marwa: feature/ai-detection
+    person_2: feature/drone-navigation
+    person_3: feature/mission-controller
+    person_4: feature/dashboard
+  rules:
+    - "Pull before starting new work."
+    - "Do not push unfinished experiments directly to main."
+    - "Merge completed work through a pull request/review."
+    - "Do not change another person's owned module without coordinating."
+    - "Changes to shared contracts/config that affect another module must be announced."
+    - "Do not commit datasets, virtual environments, caches, or unnecessary huge model files."
+
+team_acceptance_checklist:
+  - "We accept fire + smoke as the only hazard classes."
+  - "We accept the four module owners above."
+  - "We accept these exact contract field names and JSON-compatible formats."
+  - "We accept the state and command names."
+  - "We understand DETECTED is not CONFIRMED."
+  - "We accept the initial 0.60 trigger and 3-of-5 at 0.65 confirmation rule as a tunable baseline."
+  - "We accept the definition and baseline maneuver for INVESTIGATING."
+  - "We accept AirSim NED coordinates and that v1 does not claim exact hazard GPS."
+  - "We accept 640x480 camera + YOLO imgsz 640 as initial values, not permanent promises."
+  - "We accept the folder ownership and Git rules."
+  - "If all agree, mark config version 1.0 frozen and start Jira development tasks against it."
