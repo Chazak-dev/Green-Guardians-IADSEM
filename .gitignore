@@ -1,0 +1,12 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+*.wbproj
+
+# generated output, not source (see config: "results ... normally gitignored")
+results/images/*
+!results/images/.gitkeep
+results/videos/*
+!results/videos/.gitkeep
