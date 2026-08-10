@@ -129,6 +129,140 @@ Pine {
   rotation 0 0 1 -2.6179953071795863
   name "pine tree(2)"
 }
+# Near forest cluster (patrol/monitoring zone), added so the patrol has a
+# reachable forest ~10-14m from spawn - the original 7 Pine trees above sit
+# 17-31m out, too far for a demo given the drone's ~0.17-0.2 m/s cruise speed.
+# Placed southwest of spawn since that's the drone's fixed starting heading
+# (~-170 to -180 degrees), so the approach only needs a small initial turn.
+#
+# Arranged as a ring (radius 6.5m) around a clearing centered at (-12, -5),
+# with a wide ~90-degree gap on the base-facing side (angles -10 to 80
+# degrees) for entry/exit. drone/mission.py's patrol waypoints are all kept
+# within ~5m of that center, which - since a disk is convex - guarantees
+# every straight-line leg between them stays inside the disk and therefore
+# clear of this ring (see mission.py's PATROL_ROUTE comment for the leg
+# checks). Don't add more trees or move these without re-checking that.
+Pine {
+  translation -10.9 1.4 0
+  name "pine tree(10)"
+}
+Pine {
+  translation -17.6 -1.8 0
+  rotation 0 0 1 1.2
+  name "pine tree(11)"
+}
+Pine {
+  translation -17.0 -9.2 0
+  rotation 0 0 1 2.4
+  name "pine tree(12)"
+}
+Pine {
+  translation -9.8 -11.1 0
+  rotation 0 0 1 0.6
+  name "pine tree(13)"
+}
+Pine {
+  translation -5.6 -6.1 0
+  rotation 0 0 1 3.0
+  name "pine tree(14)"
+}
+# Fire/smoke observation target, in the clearing at the middle of the near
+# forest cluster (~3-4.5m clear of every tree above). Built from plain
+# Webots geometry (no external assets): three stacked cones for the flame
+# silhouette with emissive PBRAppearance for strong color contrast against
+# the forest, a charred ground disc, a translucent smoke puff, and a warm
+# point light for visual pop. Not a physically accurate fire - just
+# realistic-looking pixels for the AI teammate's YOLO detector later.
+Solid {
+  translation -13.5 -5.7 0
+  name "fire_target"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.05 0.05 0.05
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        radius 0.6
+        height 0.02
+      }
+    }
+    Transform {
+      translation 0 0 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.35
+            height 0.7
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0 0 0.35
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.22
+            height 0.6
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0 0 0.62
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.85 0.2
+            emissiveColor 1 0.8 0.15
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.1
+            height 0.35
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.1 0.05 1.3
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.5 0.5 0.5
+            transparency 0.55
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.45
+          }
+        }
+      ]
+    }
+  ]
+}
+PointLight {
+  attenuation 0 0 1
+  color 1 0.5 0.1
+  intensity 3
+  location -13.5 -5.7 0.8
+  radius 6
+}
 Forest {
   translation 0 0 -0.01
   shape [
