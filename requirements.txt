@@ -1,2 +1,6 @@
 numpy
 opencv-python
+ultralytics
+torch
+pyyaml
+pytest
