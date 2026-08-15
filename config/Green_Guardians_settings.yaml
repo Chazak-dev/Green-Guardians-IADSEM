@@ -35,13 +35,13 @@ contracts:
       timestamp: "string; required; ISO-8601 UTC"
       image_width: "integer; required"
       image_height: "integer; required"
-      drone_position: "object {x,y,z}; required; AirSim NED metres"
+      drone_position: "object {x,y,z}; required; Webots world-frame metres from the GPS device, z positive up (see drone: section below)"
     example:
       frame_id: "frame-0042"
       timestamp: "2026-08-06T09:30:00Z"
       image_width: 640
       image_height: 480
-      drone_position: {x: 12.0, y: 30.0, z: -10.0}
+      drone_position: {x: -9.0, y: -3.5, z: 12.0}
 
   detection_event:
     producer: person_1
@@ -76,15 +76,15 @@ contracts:
     displayed_by: person_4
     fields:
       timestamp: "string; required"
-      position: "object {x,y,z}; AirSim NED metres"
-      altitude_m: "float; positive height; for flat demo use approximately -z"
+      position: "object {x,y,z}; Webots world-frame metres from the GPS device, z positive up"
+      altitude_m: "float; positive height; equals position.z directly (Webots z is already positive up, unlike AirSim's NED convention this file originally assumed)"
       mission_state: "enum: IDLE | TAKEOFF | PATROL | HAZARD_DETECTED | INVESTIGATING | CONFIRMED | REJECTED | RETURN_HOME | LANDING | LANDED | ERROR"
       current_waypoint_index: "integer or null"
       camera_ok: "boolean"
     example:
       timestamp: "2026-08-06T09:30:01Z"
-      position: {x: 12.0, y: 30.0, z: -10.0}
-      altitude_m: 10.0
+      position: {x: -9.0, y: -3.5, z: 12.0}
+      altitude_m: 12.0
       mission_state: PATROL
       current_waypoint_index: 2
       camera_ok: true
@@ -119,7 +119,7 @@ contracts:
       status: "enum: CONFIRMED;"
       confidence: "float; representative confirmation confidence"
       evidence_image_path: "string or null"
-      observed_position: "object {x,y,z}; AirSim NED position of drone when evidence was captured; NOT exact hazard GPS"
+      observed_position: "object {x,y,z}; Webots world-frame position of drone when evidence was captured, z positive up; NOT exact hazard GPS"
     example:
       alert_id: "alert-001"
       detection_id: "det-001"
@@ -128,7 +128,7 @@ contracts:
       status: CONFIRMED
       confidence: 0.88
       evidence_image_path: "results/frame-0047.jpg"
-      observed_position: {x: 14.0, y: 30.0, z: -10.0}
+      observed_position: {x: -13.5, y: -5.7, z: 12.0}
 
 shared_policy:
   candidate_trigger:
@@ -173,17 +173,27 @@ camera:
 
 drone:
   owner: person_2
-  coordinate_system: "AirSim NED metres: +x North/forward, +y East/right, +z Down; airborne z is normally negative relative to origin"
-  patrol_altitude_m: 10
-  patrol_speed_mps: 2
-  investigation_speed_mps: 1
-  investigation_approach_m: 2
-  patrol_waypoints_relative_ned:
-    - {x: 0, y: 0, z: -10}
-    - {x: 15, y: 0, z: -10}
-    - {x: 15, y: 15, z: -10}
-    - {x: 0, y: 15, z: -10}
-  tuning_rule: "P2 must test scene safety; altitude/speed/waypoints/approach may be tuned without a team vote, but changes must stay here and P1 must be told if camera view changes materially."
+  status: "Reflects drone/drone_controller.py and drone/mission.py as implemented, not the original AirSim design."
+  simulator: "Webots R2025a, DJI Mavic 2 PRO, extern controller — see drone/webots_world/green_guardians_patrol.wbt"
+  coordinate_system: "Webots world frame, metres, read from the GPS device: z is altitude and is positive up. NOT AirSim NED — the project switched simulators from AirSim to Webots after this file's coordinates were first written (see DroneController.get_position()'s docstring in drone_controller.py)."
+  patrol_altitude_m: 12.0  # CRUISE_ALTITUDE in drone/mission.py; clears the tallest tree (~9.1m) by 3m
+  flight_control: "A per-tick PID-style stabilization loop (DroneController._stabilize_step), not a constant commanded speed. There is no patrol_speed_mps/investigation_speed_mps knob in code; the drone converges on each target within TARGET_PRECISION_M (0.5m) horizontally and ALTITUDE_PRECISION_M (0.3m) vertically."
+  patrol_route:
+    status: implemented
+    source: "drone/mission.py PATROL_ROUTE - absolute Webots-world waypoints tied to green_guardians_patrol.wbt, not relative offsets from a home point"
+    cruise_altitude_m: 12.0
+    waypoints:
+      - {name: fire_observation, x: -4, y: -1.5, z: 12.0}
+      - {name: forest_edge, x: -9, y: -3.5, z: 12.0}
+      - {name: patrol_west, x: -15.9, y: -7.0, z: 12.0}
+      - {name: patrol_south, x: -11, y: -8.5, z: 12.0}
+      - {name: exit_forest, x: -7, y: -4, z: 12.0}
+      - {name: return_base, x: -1, y: -0.5, z: 12.0}
+  investigation_maneuver:
+    status: not_yet_implemented
+    note: "drone/ currently only implements connect/arm/takeoff/move_to/land plus the fixed patrol route above. No investigate()/approach behavior exists yet; investigation_approach_m is a target for that future work, not current behavior."
+    investigation_approach_m: 2
+  tuning_rule: "P2 must test scene safety; altitude/waypoints/approach may be tuned without a team vote, but changes must stay here and P1 must be told if camera view changes materially."
 
 mission_controller:
   owner: person_3
