@@ -4,9 +4,13 @@ __pycache__/
 *.pyc
 .DS_Store
 *.wbproj
+.vscode/
 
 # generated output, not source (see config: "results ... normally gitignored")
 results/images/*
 !results/images/.gitkeep
 results/videos/*
 !results/videos/.gitkeep
+
+# YOLO training run output - weights/images, not source
+runs/

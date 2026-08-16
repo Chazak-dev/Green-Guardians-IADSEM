@@ -12,6 +12,7 @@ from ultralytics import YOLO
 
 from ai.image_processing import annotate_frame, save_evidence_image, validate_frame
 from ai.model_config import ModelConfig, load_model_config
+from shared.models import CameraFrameMetadata
 
 # Permissive on purpose: Person 3 owns the 0.60 candidate-trigger decision
 # (shared_policy.candidate_trigger). This module reports what it sees.
@@ -27,9 +28,17 @@ class FireSmokeDetector:
         self.confidence_threshold = confidence_threshold
         self._model = YOLO(str(self.config.model_path))
 
-    def detect(self, frame: np.ndarray, frame_id: str, timestamp: str,
+    def detect(self, frame: np.ndarray, frame_metadata: CameraFrameMetadata,
                source: str = "patrol", save_evidence: bool = False) -> List[dict]:
-        """Run inference on one frame and return a list of detection_event dicts."""
+        """Run inference on one frame and return a list of detection_event dicts.
+
+        frame_metadata is shared.models.CameraFrameMetadata, the bundle
+        Person 2's camera feed is expected to produce (contracts.
+        camera_frame_metadata). Width/height are still read from the actual
+        array, not frame_metadata, so a stale caller value can't silently
+        disagree with the real frame; drone_position is accepted but
+        unused here since detection_event doesn't carry it.
+        """
         validate_frame(frame)
         height, width = frame.shape[:2]
 
@@ -42,10 +51,12 @@ class FireSmokeDetector:
             verbose=False,
         )[0]
 
-        detections = self._extract_detections(results, frame_id, timestamp, source, width, height)
+        detections = self._extract_detections(
+            results, frame_metadata.frame_id, frame_metadata.timestamp, source, width, height
+        )
 
         if save_evidence and detections:
-            evidence_path = save_evidence_image(annotate_frame(frame, detections), frame_id)
+            evidence_path = save_evidence_image(annotate_frame(frame, detections), frame_metadata.frame_id)
             for det in detections:
                 det["image_path"] = evidence_path
 
