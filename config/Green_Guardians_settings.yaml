@@ -6,9 +6,10 @@ project:
 document_status:
   status: person_3_working_draft
   owner: person_3
-  purpose: "Configure only Person 3's backend work and Person 4's dashboard work."
 
 team_ownership:
+  person_1: "AI/CV — fire/smoke YOLO detection and re-check"
+  person_2: "Webots — camera, drone status, patrol, investigation movement"
   person_3: "Mission Controller — states, decisions, alerts, logs, mock integration, and application orchestration"
   person_4: "Streamlit — dashboard and visualization"
 
@@ -78,16 +79,14 @@ contracts:
       timestamp: "string; required"
       position: "object {x,y,z}; Webots world-frame metres from the GPS device, z positive up"
       altitude_m: "float; positive height; equals position.z directly (Webots z is already positive up, unlike AirSim's NED convention this file originally assumed)"
-      mission_state: "enum: IDLE | TAKEOFF | PATROL | HAZARD_DETECTED | INVESTIGATING | CONFIRMED | REJECTED | RETURN_HOME | LANDING | LANDED | ERROR"
-      current_waypoint_index: "integer or null"
-      camera_ok: "boolean"
+      mission_state: "enum: IDLE | TAKEOFF | PATROL | HAZARD_DETECTED | INVESTIGATING | CONFIRMED | REJECTED | RETURN_HOME | LANDING | LANDED | ERROR; NOT reported by the drone (drone_controller.py has no concept of it) - filled in by the backend's own current MissionState when this status is built"
+      current_waypoint_index: "integer or null; only meaningful while drone/mission.py's PatrolMission is running"
     example:
       timestamp: "2026-08-06T09:30:01Z"
       position: {x: -9.0, y: -3.5, z: 12.0}
       altitude_m: 12.0
       mission_state: PATROL
       current_waypoint_index: 2
-      camera_ok: true
 
   navigation_command:
     producer: person_3
@@ -230,17 +229,25 @@ backend_contracts:
       hazard: "fire | smoke"
       confidence: "float 0.0..1.0"
       source: "patrol | investigation"
+      position: "object {x,y,z}; required; Webots world-frame metres, z positive up (see drone: section)"
+      bbox: "array of 4 integers: xyxy pixels; required; matches ai/detector.py's YOLO output"
+      image_width: "integer; required"
+      image_height: "integer; required"
     optional_fields:
       frame_id: "string or null"
-      evidence_image_path: "string or null"
+      image_path: "string or null; annotated evidence image (renamed from evidence_image_path to match contracts.detection_event / ai/detector.py's actual output key)"
     example:
       detection_id: det-mock-001
       timestamp: "2026-08-15T10:00:00Z"
       hazard: fire
       confidence: 0.91
       source: patrol
+      position: {x: -9.0, y: -3.5, z: 12.0}
+      bbox: [150, 70, 420, 360]
+      image_width: 640
+      image_height: 480
       frame_id: frame-mock-001
-      evidence_image_path: null
+      image_path: null
 
   investigation_result:
     owner: person_3
@@ -279,6 +286,7 @@ backend_contracts:
       hazard: "fire | smoke"
       status: CONFIRMED
       confidence: "float 0.0..1.0"
+      observed_position: "object {x,y,z}; required; Webots world-frame metres, z positive up; NOT exact hazard GPS"
     optional_fields:
       evidence_image_path: "string or null"
     example:
@@ -289,6 +297,7 @@ backend_contracts:
       hazard: fire
       status: CONFIRMED
       confidence: 0.89
+      observed_position: {x: -13.5, y: -5.7, z: 12.0}
       evidence_image_path: null
 
   dashboard_status_output:
@@ -298,6 +307,8 @@ backend_contracts:
     required_fields:
       timestamp: "string; ISO-8601 UTC"
       mission_state: "IDLE | TAKEOFF | PATROL | HAZARD_DETECTED | INVESTIGATING | CONFIRMED | REJECTED | RETURN_HOME | LANDING | LANDED | ERROR"
+      drone_position: "object {x,y,z}; required; Webots world-frame metres, z positive up; the drone's CURRENT position, independent of any detection/alert"
+      altitude_m: "float; required; equals drone_position.z (Webots z is already positive up)"
       backend_available: boolean
       live_input_available: boolean
       investigation_status: "IDLE | ACTIVE | CONFIRMED | REJECTED"
@@ -305,10 +316,13 @@ backend_contracts:
       latest_alert: "alert_output object or null"
       confirmed_alert_count: integer
     optional_fields:
+      evidence_image_path: "string or null; most relevant image to display - latest_alert.evidence_image_path if a confirmed alert exists, otherwise latest_detection.image_path"
       system_message: "string or null"
     example:
       timestamp: "2026-08-15T10:00:06Z"
       mission_state: CONFIRMED
+      drone_position: {x: -13.5, y: -5.7, z: 12.0}
+      altitude_m: 12.0
       backend_available: true
       live_input_available: false
       investigation_status: CONFIRMED
@@ -318,8 +332,12 @@ backend_contracts:
         hazard: fire
         confidence: 0.91
         source: patrol
+        position: {x: -9.0, y: -3.5, z: 12.0}
+        bbox: [150, 70, 420, 360]
+        image_width: 640
+        image_height: 480
         frame_id: frame-mock-001
-        evidence_image_path: null
+        image_path: null
       latest_alert:
         alert_id: alert-001
         investigation_id: inv-001
@@ -328,8 +346,10 @@ backend_contracts:
         hazard: fire
         status: CONFIRMED
         confidence: 0.89
+        observed_position: {x: -13.5, y: -5.7, z: 12.0}
         evidence_image_path: null
       confirmed_alert_count: 1
+      evidence_image_path: null
       system_message: "Fire investigation confirmed."
 
   log_event:
@@ -393,6 +413,7 @@ dashboard:
   refresh_seconds: 1
   must_show:
     - mission_state
+    - drone_position_and_altitude
     - module_availability
     - latest_fire_or_smoke_detection
     - confidence
