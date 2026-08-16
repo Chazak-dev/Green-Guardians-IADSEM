@@ -19,10 +19,10 @@ DEFAULT_DATA = r"C:\Users\itsch\Desktop\datasets\real\fire_smoke\data.yaml"
 def parse_args():
     parser = argparse.ArgumentParser(description="Fine-tune YOLOv8n on the fire/smoke dataset.")
     parser.add_argument("--data", default=DEFAULT_DATA, help="Path to data.yaml")
-    parser.add_argument("--epochs", type=int, default=100)
+    parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--patience", type=int, default=20, help="Early-stop after N epochs with no mAP improvement")
     parser.add_argument("--imgsz", type=int, default=640)
-    parser.add_argument("--batch", type=int, default=16)
+    parser.add_argument("--batch", type=int, default=8)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--seed", type=int, default=0)
     return parser.parse_args()
