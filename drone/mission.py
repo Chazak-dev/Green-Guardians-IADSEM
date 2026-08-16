@@ -71,7 +71,7 @@ class PatrolMission:
             name = waypoint["name"]
             x, y, z = waypoint["position"]
             position = self.drone.move_to(x, y, z, max_steps=WAYPOINT_MAX_STEPS)
-            frame = self.drone.camera.capture_frame()
+            frame, metadata = self.drone.camera.capture_frame_metadata(position)
             image_path = os.path.join(self.capture_dir, f"{index:02d}_{name}.jpg")
             self.drone.camera.save_image(image_path, frame)
 
@@ -81,10 +81,11 @@ class PatrolMission:
                 "target": (x, y, z),
                 "position": position,
                 "frame": frame,
+                "metadata": metadata,
                 "image_path": image_path,
             })
             print(f"Waypoint {index} ({name}): target={(x, y, z)} reached={position} -> {image_path}")
-            # later: detections = ai.detect(frame)
+            # later: detections = detector.detect(frame, metadata.frame_id, metadata.timestamp)
 
         self.drone.land(max_steps=WAYPOINT_MAX_STEPS)
         self.drone.disconnect()
