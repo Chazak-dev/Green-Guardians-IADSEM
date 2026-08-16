@@ -15,3 +15,9 @@ results/videos/*
 # training dataset for Person 2 - large generated image sets, not source
 image_for_model/
 filtered_images/
+
+# YOLO training outputs (Person 1)
+runs/
+
+# editor settings
+.vscode/

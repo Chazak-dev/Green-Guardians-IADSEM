@@ -25,6 +25,10 @@ Person 3 – Backend & Mission Controller
 
 Person 4 – Dashboard
 
+## Dataset
+
+Real-life fire/smoke training data: [Fire and Smoke Dataset (Object Detection, YOLO)](https://www.kaggle.com/datasets/azimjaan21/fire-and-smoke-dataset-object-detection-yolo?resource=download) — Kaggle, ~17.5k images, YOLO-format labels, `fire`/`smoke` classes. Used to fine-tune YOLOv8n in `ai/` on top of Webots simulation data.
+
 ## Project Structure
 
 ai/
