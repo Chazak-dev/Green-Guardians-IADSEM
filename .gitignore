@@ -17,7 +17,7 @@ image_for_model/
 filtered_images/
 
 # YOLO training outputs (Person 1)
-runs/
+
 
 # editor settings
 .vscode/
