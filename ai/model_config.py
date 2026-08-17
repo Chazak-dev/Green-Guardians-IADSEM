@@ -23,6 +23,7 @@ class ModelConfig:
     iou_threshold: float
     device: Optional[str]
     inference_fps_target: int
+    confidence_threshold: float
 
 
 def load_model_config(settings_path: Path = _SETTINGS_PATH) -> ModelConfig:
@@ -46,4 +47,5 @@ def load_model_config(settings_path: Path = _SETTINGS_PATH) -> ModelConfig:
         iou_threshold=ai_settings["iou_threshold"],
         device=resolved_device,
         inference_fps_target=ai_settings["inference_fps_target"],
+        confidence_threshold=ai_settings["confidence_threshold"],
     )

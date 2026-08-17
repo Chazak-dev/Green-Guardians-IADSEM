@@ -13,18 +13,22 @@ from ultralytics import YOLO
 from ai.image_processing import annotate_frame, save_evidence_image, validate_frame
 from ai.model_config import ModelConfig, load_model_config
 
-# Permissive on purpose: Person 3 owns the 0.60 candidate-trigger decision
-# (shared_policy.candidate_trigger). This module reports what it sees.
-DEFAULT_CONFIDENCE_THRESHOLD = 0.25
-
 
 class FireSmokeDetector:
     """Loads a YOLOv8n model and returns detection_event dicts for fire/smoke."""
 
     def __init__(self, config: Optional[ModelConfig] = None,
-                 confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD):
+                 confidence_threshold: Optional[float] = None):
         self.config = config or load_model_config()
-        self.confidence_threshold = confidence_threshold
+        # Defaults to config/Green_Guardians_settings.yaml's ai.confidence_threshold
+        # (permissive on purpose: Person 3 owns the 0.60 candidate-trigger
+        # decision in shared_policy.candidate_trigger - this module just
+        # reports what it sees above its own noise floor). Callers may still
+        # override per-instance, e.g. for tests or tooling scripts.
+        self.confidence_threshold = (
+            confidence_threshold if confidence_threshold is not None
+            else self.config.confidence_threshold
+        )
         self._model = YOLO(str(self.config.model_path))
 
     def detect(self, frame: np.ndarray, frame_id: str, timestamp: str,

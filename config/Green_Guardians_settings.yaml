@@ -161,6 +161,12 @@ ai:
   iou_threshold: 0.45
   inference_fps_target: 2
   device: auto
+  # AI-module noise floor passed to YOLO's own conf= at inference time - NOT
+  # the same thing as shared_policy.candidate_trigger.threshold (0.60), which
+  # is Person 3's backend decision for turning a detection into an
+  # investigation candidate. This module just reports what it sees above
+  # this floor; it does not implement the 0.60 business rule.
+  confidence_threshold: 0.25
   tuning_rule: "P1 may tune imgsz/IoU/FPS/model after evaluation; update this file and tell P2/P3 if latency or frame requirements change."
 
 camera:

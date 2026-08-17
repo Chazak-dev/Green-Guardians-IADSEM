@@ -30,6 +30,7 @@ def detector():
         iou_threshold=0.45,
         device=None,
         inference_fps_target=2,
+        confidence_threshold=0.25,
     )
     instance.confidence_threshold = 0.25
     return instance
@@ -74,3 +75,31 @@ def test_extract_detections_returns_empty_list_when_nothing_matches(detector):
     )
 
     assert detections == []
+
+
+def _stub_config(confidence_threshold):
+    return ModelConfig(
+        model_path="unused.pt",
+        classes=["fire", "smoke"],
+        imgsz=640,
+        iou_threshold=0.45,
+        device=None,
+        inference_fps_target=2,
+        confidence_threshold=confidence_threshold,
+    )
+
+
+def test_confidence_threshold_defaults_to_config_value(monkeypatch):
+    monkeypatch.setattr("ai.detector.YOLO", lambda path: object())
+
+    instance = FireSmokeDetector(config=_stub_config(confidence_threshold=0.42))
+
+    assert instance.confidence_threshold == 0.42
+
+
+def test_confidence_threshold_can_be_overridden(monkeypatch):
+    monkeypatch.setattr("ai.detector.YOLO", lambda path: object())
+
+    instance = FireSmokeDetector(config=_stub_config(confidence_threshold=0.42), confidence_threshold=0.9)
+
+    assert instance.confidence_threshold == 0.9
