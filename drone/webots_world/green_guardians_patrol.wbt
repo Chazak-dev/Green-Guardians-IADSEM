@@ -1,8 +1,4 @@
 #VRML_SIM R2025a utf8
-# Green Guardians patrol world.
-# Based on Webots' bundled DJI Mavic 2 PRO demo (Contents/projects/robots/dji/mavic/worlds/mavic_2_pro.wbt),
-# with the robot's controller switched to "<extern>" so drone/drone_controller.py drives it directly
-# instead of Webots' bundled C controller, and the camera resized to match config/settings.json (640x480).
 
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
@@ -17,6 +13,8 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/vehicles/protos/tesla/TeslaModel3Simple.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/trees/protos/Pine.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/trees/protos/Forest.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/buildings/protos/SimpleTwoFloorsHouse.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/vehicles/protos/bmw/BmwX5Simple.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/dji/mavic/protos/Mavic2Pro.proto"
 
 WorldInfo {
@@ -33,7 +31,7 @@ WorldInfo {
 }
 Viewpoint {
   orientation -0.03132509357312057 -0.004229724205027985 0.9995002991224087 2.901671340011777
-  position 3.392036511082617 -0.9278446049316036 0.7513423909480075
+  position -0.09434350893854984 -0.5358490524455571 0.9307690524589985
   near 0.2
   follow "Mavic 2 PRO"
   followSmoothness 0.2
@@ -129,19 +127,6 @@ Pine {
   rotation 0 0 1 -2.6179953071795863
   name "pine tree(2)"
 }
-# Near forest cluster (patrol/monitoring zone), added so the patrol has a
-# reachable forest ~10-14m from spawn - the original 7 Pine trees above sit
-# 17-31m out, too far for a demo given the drone's ~0.17-0.2 m/s cruise speed.
-# Placed southwest of spawn since that's the drone's fixed starting heading
-# (~-170 to -180 degrees), so the approach only needs a small initial turn.
-#
-# Arranged as a ring (radius 6.5m) around a clearing centered at (-12, -5),
-# with a wide ~90-degree gap on the base-facing side (angles -10 to 80
-# degrees) for entry/exit. drone/mission.py's patrol waypoints are all kept
-# within ~5m of that center, which - since a disk is convex - guarantees
-# every straight-line leg between them stays inside the disk and therefore
-# clear of this ring (see mission.py's PATROL_ROUTE comment for the leg
-# checks). Don't add more trees or move these without re-checking that.
 Pine {
   translation -10.9 1.4 0
   name "pine tree(10)"
@@ -152,7 +137,7 @@ Pine {
   name "pine tree(11)"
 }
 Pine {
-  translation -17.0 -9.2 0
+  translation -17 -9.2 0
   rotation 0 0 1 2.4
   name "pine tree(12)"
 }
@@ -163,19 +148,82 @@ Pine {
 }
 Pine {
   translation -5.6 -6.1 0
-  rotation 0 0 1 3.0
+  rotation 0 0 1 3
   name "pine tree(14)"
 }
-# Fire/smoke observation target, in the clearing at the middle of the near
-# forest cluster (~3-4.5m clear of every tree above). Built from plain
-# Webots geometry (no external assets): three stacked cones for the flame
-# silhouette with emissive PBRAppearance for strong color contrast against
-# the forest, a charred ground disc, a translucent smoke puff, and a warm
-# point light for visual pop. Not a physically accurate fire - just
-# realistic-looking pixels for the AI teammate's YOLO detector later.
+# Trees around the dataset-collection fire/smoke sites (added below, further
+# southwest) so those scenarios read as forest fires, not fires sitting in
+# open sand. Each is placed 2.5-4m from its site - close enough to read as
+# "in the forest" in camera, far enough to keep collision clearance (see the
+# near forest cluster's comment above for why that clearance matters) and to
+# stay clear of every other tree/fire already placed.
+Pine {
+  translation -16 -13 0
+  rotation 0 0 1 0.8
+  name "pine tree(15)"
+}
+Pine {
+  translation -11 -14 0
+  rotation 0 0 1 2.1
+  name "pine tree(16)"
+}
+Pine {
+  translation -14.5 -9 0
+  rotation 0 0 1 1.5
+  name "pine tree(17)"
+}
+Pine {
+  translation -24.5 -3.5 0
+  rotation 0 0 1 0.3
+  name "pine tree(18)"
+}
+Pine {
+  translation -20 -4 0
+  rotation 0 0 1 2.7
+  name "pine tree(19)"
+}
+Pine {
+  translation -23 0.5 0
+  rotation 0 0 1 1.9
+  name "pine tree(20)"
+}
+Pine {
+  translation -22.5 -8.5 0
+  rotation 0 0 1 0.5
+  name "pine tree(21)"
+}
+Pine {
+  translation -16.5 -14 0
+  rotation 0 0 1 2.4
+  name "pine tree(22)"
+}
+Pine {
+  translation -24 -13 0
+  rotation 0 0 1 1.1
+  name "pine tree(23)"
+}
+Pine {
+  translation -15.5 -15 0
+  rotation 0 0 1 2.9
+  name "pine tree(24)"
+}
+Pine {
+  translation -10.5 -17 0
+  rotation 0 0 1 0.7
+  name "pine tree(25)"
+}
+Pine {
+  translation -13 -19 0
+  rotation 0 0 1 1.7
+  name "pine tree(26)"
+}
+Pine {
+  translation -16 -18 0
+  rotation 0 0 1 2.2
+  name "pine tree(27)"
+}
 Solid {
   translation -13.5 -5.7 0
-  name "fire_target"
   children [
     Shape {
       appearance PBRAppearance {
@@ -184,19 +232,19 @@ Solid {
         metalness 0
       }
       geometry Cylinder {
-        radius 0.6
         height 0.02
+        radius 0.6
       }
     }
-    Transform {
+    Pose {
       translation 0 0 0.05
       children [
         Shape {
           appearance PBRAppearance {
             baseColor 0.9 0.25 0.05
-            emissiveColor 0.9 0.25 0.02
             roughness 0.4
             metalness 0
+            emissiveColor 0.9 0.25 0.02
           }
           geometry Cone {
             bottomRadius 0.35
@@ -205,15 +253,15 @@ Solid {
         }
       ]
     }
-    Transform {
+    Pose {
       translation 0 0 0.35
       children [
         Shape {
           appearance PBRAppearance {
             baseColor 1 0.5 0.05
-            emissiveColor 1 0.45 0.03
             roughness 0.4
             metalness 0
+            emissiveColor 1 0.45 0.03
           }
           geometry Cone {
             bottomRadius 0.22
@@ -222,15 +270,15 @@ Solid {
         }
       ]
     }
-    Transform {
+    Pose {
       translation 0 0 0.62
       children [
         Shape {
           appearance PBRAppearance {
             baseColor 1 0.85 0.2
-            emissiveColor 1 0.8 0.15
             roughness 0.4
             metalness 0
+            emissiveColor 1 0.8 0.15
           }
           geometry Cone {
             bottomRadius 0.1
@@ -239,7 +287,7 @@ Solid {
         }
       ]
     }
-    Transform {
+    Pose {
       translation 0.1 0.05 1.3
       children [
         Shape {
@@ -255,6 +303,7 @@ Solid {
       ]
     }
   ]
+  name "fire_target"
 }
 PointLight {
   attenuation 0 0 1
@@ -263,17 +312,1958 @@ PointLight {
   location -13.5 -5.7 0.8
   radius 6
 }
+# -----------------------------------------------------------------------------
+# AI training dataset scenarios (Person 2's fire/smoke detector).
+# fire_target above is the "medium fire" baseline. These add the other sizes/
+# cases a real dataset needs: small fire, a large multi-tree blaze, three
+# separate fires (a scattered-fire scenario), and a smoke-only smolder with
+# no visible flame (for early-detection training). Spread a few dozen metres
+# apart so a capture pass can visit each independently without one bleeding
+# into another's frame. Not attempting weather/fog/night lighting here -
+# vanilla Webots doesn't support those without substantial custom VFX work,
+# which is out of scope for this project.
+# -----------------------------------------------------------------------------
+
+# Small fire (~0.5x fire_target's scale) - "small fire" category.
+Solid {
+  translation -13.8 -11.6 0
+  name "fire_small"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.05 0.05 0.05
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        radius 0.3
+        height 0.02
+      }
+    }
+    Transform {
+      translation 0 0 0.025
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.18
+            height 0.35
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0 0 0.175
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.11
+            height 0.3
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0 0 0.31
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.85 0.2
+            emissiveColor 1 0.8 0.15
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.05
+            height 0.18
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.05 0.03 0.65
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.5 0.5 0.5
+            transparency 0.55
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.22
+          }
+        }
+      ]
+    }
+  ]
+}
+PointLight {
+  attenuation 0 0 1
+  color 1 0.5 0.1
+  intensity 1.5
+  location -13.8 -11.6 0.4
+  radius 3
+}
+
+# Large fire (three overlapping flame clusters on one shared charred patch) -
+# "large fire" / "multiple burning trees" category.
+Solid {
+  translation -22 -2 0
+  name "fire_large"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.05 0.05 0.05
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        radius 1.6
+        height 0.02
+      }
+    }
+    Transform {
+      translation 0 0 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.45
+            height 0.9
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0 0 0.45
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.28
+            height 0.75
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0 0 0.78
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.85 0.2
+            emissiveColor 1 0.8 0.15
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.13
+            height 0.45
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.9 0.5 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.4
+            height 0.8
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.9 0.5 0.4
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.25
+            height 0.65
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.9 0.5 0.68
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.85 0.2
+            emissiveColor 1 0.8 0.15
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.12
+            height 0.4
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -0.8 0.6 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.38
+            height 0.75
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -0.8 0.6 0.38
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.24
+            height 0.6
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -0.8 0.6 0.64
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.85 0.2
+            emissiveColor 1 0.8 0.15
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.11
+            height 0.38
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.2 0.1 1.4
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.45 0.45 0.45
+            transparency 0.5
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.7
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -0.5 0.7 1.6
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.5 0.5 0.5
+            transparency 0.6
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.55
+          }
+        }
+      ]
+    }
+  ]
+}
+PointLight {
+  attenuation 0 0 1
+  color 1 0.45 0.08
+  intensity 5
+  location -22 -2 0.9
+  radius 8
+}
+
+# Three separate small fires, ~3m apart - "multiple/scattered fires" category.
+Solid {
+  translation -20 -10 0
+  name "fire_multi_1"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.05 0.05 0.05
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        radius 0.3
+        height 0.02
+      }
+    }
+    Transform {
+      translation 0 0 0.025
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.18
+            height 0.35
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0 0 0.175
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.11
+            height 0.3
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0 0 0.31
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.85 0.2
+            emissiveColor 1 0.8 0.15
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.05
+            height 0.18
+          }
+        }
+      ]
+    }
+  ]
+}
+PointLight {
+  attenuation 0 0 1
+  color 1 0.5 0.1
+  intensity 1.5
+  location -20 -10 0.4
+  radius 3
+}
+Solid {
+  translation -22.5 -11 0
+  name "fire_multi_2"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.05 0.05 0.05
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        radius 0.3
+        height 0.02
+      }
+    }
+    Transform {
+      translation 0 0 0.025
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.18
+            height 0.35
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0 0 0.175
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.11
+            height 0.3
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0 0 0.31
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.85 0.2
+            emissiveColor 1 0.8 0.15
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.05
+            height 0.18
+          }
+        }
+      ]
+    }
+  ]
+}
+PointLight {
+  attenuation 0 0 1
+  color 1 0.5 0.1
+  intensity 1.5
+  location -22.5 -11 0.4
+  radius 3
+}
+Solid {
+  translation -18.5 -12 0
+  name "fire_multi_3"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.05 0.05 0.05
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        radius 0.3
+        height 0.02
+      }
+    }
+    Transform {
+      translation 0 0 0.025
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.18
+            height 0.35
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0 0 0.175
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.11
+            height 0.3
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0 0 0.31
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.85 0.2
+            emissiveColor 1 0.8 0.15
+            roughness 0.4
+          }
+          geometry Cone {
+            bottomRadius 0.05
+            height 0.18
+          }
+        }
+      ]
+    }
+  ]
+}
+PointLight {
+  attenuation 0 0 1
+  color 1 0.5 0.1
+  intensity 1.5
+  location -18.5 -12 0.4
+  radius 3
+}
+
+# Smoke without visible flame (smoldering ground + drifting smoke, no fire
+# geometry at all) - "smoke without visible fire" category, important for
+# early wildfire detection.
+Solid {
+  translation -13 -16 0
+  name "smoke_only"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.15 0.12 0.1
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        radius 0.5
+        height 0.02
+      }
+    }
+    Transform {
+      translation 0.1 0.05 0.5
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.55 0.55 0.55
+            transparency 0.4
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.35
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -0.1 0.1 0.9
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.6 0.6 0.6
+            transparency 0.55
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.5
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.15 -0.05 1.4
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.65 0.65 0.65
+            transparency 0.7
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.6
+          }
+        }
+      ]
+    }
+  ]
+}
+
+# False positives: things that might read as fire to a naive color/brightness
+# detector but aren't - "false positives" category, teaches the model what
+# to ignore. Plain, non-emissive rock (not fire-colored, just warm-toned) and
+# a small bright warm-white glare/reflection (bright and warm-lit like a
+# light source, but white-ish rather than orange, and not flame-shaped).
+Solid {
+  translation -9 -15 0
+  name "false_positive_rock"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.35 0.2
+        roughness 0.9
+        metalness 0.1
+      }
+      geometry Sphere {
+        radius 0.6
+      }
+    }
+  ]
+}
+Solid {
+  translation -18 -4 0
+  name "false_positive_glare"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 1 1 0.85
+        emissiveColor 0.9 0.9 0.7
+        roughness 0.2
+        metalness 0.6
+      }
+      geometry Sphere {
+        radius 0.3
+      }
+    }
+  ]
+}
+PointLight {
+  attenuation 0 0 1
+  color 1 1 0.9
+  intensity 2
+  location -18 -4 0.5
+  radius 3
+}
+# =============================================================================
+# Round-2 dataset collection zones (drone/dataset_collection_round2.py).
+# 9 isolated hazard sites, each >=25m from every other and from the round-1
+# fire_target/fire_small/fire_large/fire_multi/smoke_only cluster near base,
+# so no two hazards - old or new - can ever appear in the same frame. Each
+# hazard is offset ~9m from its flight waypoint (not on top of it), matching
+# the standoff distance mission.py's fire_observation needed to keep the
+# subject in frame at the camera's fixed downward pitch.
+# =============================================================================
+Solid {
+  translation -1 -29 0
+  name "fire_medium_zone"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.05 0.05 0.05
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        height 0.03
+        radius 0.7
+      }
+    }
+    Transform {
+      translation 0 0 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.4
+            height 0.8
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.05 0.03 0.4
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.25
+            height 0.65
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -0.03 0.05 0.7
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.85 0.2
+            emissiveColor 1 0.8 0.15
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.12
+            height 0.4
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.15 0.1 1.3
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.5 0.5 0.5
+            transparency 0.55
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.5
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -0.1 0.15 1.9
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.55 0.55 0.55
+            transparency 0.7
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.6
+          }
+        }
+      ]
+    }
+  ]
+}
+PointLight {
+  attenuation 0 0 1
+  color 1 0.5 0.1
+  intensity 3
+  location -1 -29 0.9
+  radius 6
+}
+Solid {
+  translation -10 -55 0
+  name "fire_large_zone"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.05 0.05 0.05
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        height 0.03
+        radius 6.0
+      }
+    }
+    Transform {
+      translation -3.4 -0.4 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 1.0
+            height 1.4
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -3.4 -0.4 0.77
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.85 0.2
+            emissiveColor 1 0.8 0.15
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.45
+            height 0.77
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -2.3 0.5 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 1.3
+            height 2.6
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -2.3 0.5 1.4300000000000002
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.5850000000000001
+            height 1.4300000000000002
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -1.1 -0.3 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 1.1
+            height 2.0
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -1.1 -0.3 1.1
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.85 0.2
+            emissiveColor 1 0.8 0.15
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.49500000000000005
+            height 1.1
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.0 0.4 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 1.4
+            height 3.4
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.0 0.4 1.87
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.63
+            height 1.87
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 1.2 -0.4 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 1.1
+            height 2.1
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 1.2 -0.4 1.1550000000000002
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.85 0.2
+            emissiveColor 1 0.8 0.15
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.49500000000000005
+            height 1.1550000000000002
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 2.4 0.3 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 1.2
+            height 2.7
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 2.4 0.3 1.4850000000000003
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.54
+            height 1.4850000000000003
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 3.5 -0.2 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.9
+            height 1.5
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 3.5 -0.2 0.8250000000000001
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.85 0.2
+            emissiveColor 1 0.8 0.15
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.405
+            height 0.8250000000000001
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -2.8 0.1 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.4
+            height 0.9
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -0.6 -0.1 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.4
+            height 0.9
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.6 0.2 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.4
+            height 0.9
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 1.8 -0.1 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.4
+            height 0.9
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 2.9 0.15 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.4
+            height 0.9
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.3 0.2 3.5
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.45 0.45 0.45
+            transparency 0.25
+            roughness 1
+          }
+          geometry Sphere {
+            radius 1.6
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.6 0.5 6.5
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.5 0.5 0.5
+            transparency 0.4
+            roughness 1
+          }
+          geometry Sphere {
+            radius 2.2
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.9 0.9 9.5
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.55 0.55 0.55
+            transparency 0.5
+            roughness 1
+          }
+          geometry Sphere {
+            radius 2.8
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 1.1 1.4 12.5
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.6 0.6 0.6
+            transparency 0.6
+            roughness 1
+          }
+          geometry Sphere {
+            radius 3.4
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 1.0 2.0 15.2
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.65 0.65 0.65
+            transparency 0.72
+            roughness 1
+          }
+          geometry Sphere {
+            radius 4.0
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.6 2.6 17.8
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.7 0.7 0.7
+            transparency 0.82
+            roughness 1
+          }
+          geometry Sphere {
+            radius 4.6
+          }
+        }
+      ]
+    }
+  ]
+}
+PointLight {
+  attenuation 0 0 1
+  color 1 0.45 0.08
+  intensity 5
+  location -12.5 -55 1.2
+  radius 10
+}
+PointLight {
+  attenuation 0 0 1
+  color 1 0.45 0.08
+  intensity 5
+  location -7.5 -55 1.2
+  radius 10
+}
+PointLight {
+  attenuation 0 0 1
+  color 1 0.5 0.1
+  intensity 6
+  location -10 -55 1.0
+  radius 12
+}
+Solid {
+  translation -1 -81 0
+  name "fire_small_zone"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.05 0.05 0.05
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        height 0.03
+        radius 0.3
+      }
+    }
+    Transform {
+      translation 0 0 0.025
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.18
+            height 0.35
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.02 0.02 0.2
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.85 0.2
+            emissiveColor 1 0.8 0.15
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.1
+            height 0.25
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.05 0.03 0.55
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.55 0.55 0.55
+            transparency 0.6
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.25
+          }
+        }
+      ]
+    }
+  ]
+}
+PointLight {
+  attenuation 0 0 1
+  color 1 0.5 0.1
+  intensity 1.5
+  location -1 -81 0.4
+  radius 3
+}
+Solid {
+  translation 23 -94 0
+  name "smoke_only_zone"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.15 0.12 0.1
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        height 0.03
+        radius 0.55
+      }
+    }
+    Transform {
+      translation 0.1 0.05 0.6
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.5 0.5 0.5
+            transparency 0.35
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.45
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -0.15 0.1 1.3
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.55 0.55 0.55
+            transparency 0.5
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.65
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.2 -0.1 2.1
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.6 0.6 0.6
+            transparency 0.62
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.8
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -0.1 0.2 3.0
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.65 0.65 0.65
+            transparency 0.75
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.95
+          }
+        }
+      ]
+    }
+  ]
+}
+Pine {
+  translation 50.4 -90.3 0
+  rotation 0 0 1 0.9
+  name "smoke_tree_pine"
+}
+Solid {
+  translation 50 -90 0
+  name "smoke_tree_zone"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.05 0.05 0.05
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        height 0.03
+        radius 0.35
+      }
+    }
+    Transform {
+      translation 0 0 0.025
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.2
+            height 0.5
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.03 -0.02 0.3
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.85 0.2
+            emissiveColor 1 0.8 0.15
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.12
+            height 0.35
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.2 0.15 4.0
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.55 0.55 0.55
+            transparency 0.45
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.6
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.4 0.3 6.5
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.6 0.6 0.6
+            transparency 0.55
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.85
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.3 0.5 9.0
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.62 0.62 0.62
+            transparency 0.65
+            roughness 1
+          }
+          geometry Sphere {
+            radius 1.1
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.1 0.7 11.2
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.65 0.65 0.65
+            transparency 0.78
+            roughness 1
+          }
+          geometry Sphere {
+            radius 1.4
+          }
+        }
+      ]
+    }
+  ]
+}
+PointLight {
+  attenuation 0 0 1
+  color 1 0.5 0.1
+  intensity 2
+  location 50 -90 0.6
+  radius 4
+}
+Solid {
+  translation 68 -69 0
+  name "fire_smoke_zone"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.05 0.05 0.05
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        height 0.03
+        radius 1.0
+      }
+    }
+    Transform {
+      translation 0 0 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.45
+            height 0.9
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.08 -0.05 0.4
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.3
+            height 0.7
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -0.05 0.06 0.75
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.85 0.2
+            emissiveColor 1 0.8 0.15
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.15
+            height 0.45
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -0.3 -0.15 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.25
+            height 0.55
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.2 0.2 1.4
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.5 0.5 0.5
+            transparency 0.3
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.9
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.5 0.4 3.2
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.55 0.55 0.55
+            transparency 0.42
+            roughness 1
+          }
+          geometry Sphere {
+            radius 1.3
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.7 0.7 5.2
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.6 0.6 0.6
+            transparency 0.55
+            roughness 1
+          }
+          geometry Sphere {
+            radius 1.7
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.6 1.1 7.5
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.65 0.65 0.65
+            transparency 0.68
+            roughness 1
+          }
+          geometry Sphere {
+            radius 2.1
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.3 1.6 9.8
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.68 0.68 0.68
+            transparency 0.8
+            roughness 1
+          }
+          geometry Sphere {
+            radius 2.5
+          }
+        }
+      ]
+    }
+  ]
+}
+PointLight {
+  attenuation 0 0 1
+  color 1 0.5 0.1
+  intensity 4
+  location 68 -69 0.8
+  radius 8
+}
+SimpleTwoFloorsHouse {
+  translation 68 -41 0
+  rotation 0 0 1 0.6
+  name "fire_house_building"
+}
+Solid {
+  translation 69.8 -40.0 0
+  name "fire_house_flame"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.05 0.05 0.05
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        height 0.03
+        radius 0.5
+      }
+    }
+    Transform {
+      translation 0 0 0.05
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.3
+            height 0.9
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.05 0.03 0.5
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.18
+            height 0.6
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -0.03 0.05 0.8
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.85 0.2
+            emissiveColor 1 0.8 0.15
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.1
+            height 0.35
+          }
+        }
+      ]
+    }
+  ]
+}
+PointLight {
+  attenuation 0 0 1
+  color 1 0.5 0.1
+  intensity 3
+  location 69.8 -40.0 1.0
+  radius 6
+}
+Solid {
+  translation 67.5 -42.5 0
+  name "fire_house_smoke"
+  children [
+    Transform {
+      translation 0 0 6.0
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.4 0.4 0.4
+            transparency 0.3
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.8
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.3 0.2 8.0
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.5 0.5 0.5
+            transparency 0.45
+            roughness 1
+          }
+          geometry Sphere {
+            radius 1.1
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.2 0.5 10.2
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.58 0.58 0.58
+            transparency 0.6
+            roughness 1
+          }
+          geometry Sphere {
+            radius 1.4
+          }
+        }
+      ]
+    }
+    Transform {
+      translation -0.1 0.8 12.5
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.63 0.63 0.63
+            transparency 0.75
+            roughness 1
+          }
+          geometry Sphere {
+            radius 1.7
+          }
+        }
+      ]
+    }
+  ]
+}
+BmwX5Simple {
+  translation 50 -20 0.4
+  rotation 0 0 1 -1.2
+  name "fire_car_vehicle"
+  color 0.25 0.25 0.28
+}
+Solid {
+  translation 51.6 -20.6 0
+  name "fire_car_flame"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.08 0.08 0.08
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        height 0.03
+        radius 0.4
+      }
+    }
+    Transform {
+      translation 0 0 0.4
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.9 0.25 0.05
+            emissiveColor 0.9 0.25 0.02
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.25
+            height 0.6
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.04 0.02 0.65
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 1 0.5 0.05
+            emissiveColor 1 0.45 0.03
+            roughness 0.4
+            metalness 0
+          }
+          geometry Cone {
+            bottomRadius 0.14
+            height 0.4
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.1 0.05 1.2
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.15 0.15 0.15
+            transparency 0.3
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.5
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.2 0.15 1.9
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.18 0.18 0.18
+            transparency 0.45
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.7
+          }
+        }
+      ]
+    }
+    Transform {
+      translation 0.15 0.3 2.8
+      children [
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.22 0.22 0.22
+            transparency 0.6
+            roughness 1
+          }
+          geometry Sphere {
+            radius 0.9
+          }
+        }
+      ]
+    }
+  ]
+}
+PointLight {
+  attenuation 0 0 1
+  color 1 0.45 0.08
+  intensity 2.5
+  location 51.6 -20.6 0.8
+  radius 5
+}
+Solid {
+  translation 23 -16 0
+  name "negative_zone_rock"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.5 0.32 0.18
+        roughness 0.9
+        metalness 0.1
+      }
+      geometry Sphere {
+        radius 0.7
+      }
+    }
+  ]
+}
+Solid {
+  translation 26.5 -17.5 0
+  name "negative_zone_glare"
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 1 1 0.85
+        emissiveColor 0.9 0.9 0.7
+        roughness 0.2
+        metalness 0.6
+      }
+      geometry Sphere {
+        radius 0.35
+      }
+    }
+  ]
+}
+PointLight {
+  attenuation 0 0 1
+  color 1 1 0.9
+  intensity 2.5
+  location 26.5 -17.5 0.5
+  radius 3.5
+}
+TeslaModel3Simple {
+  translation 20.0 -14.5 0.4
+  rotation 0 0 1 2.1
+  name "negative_zone_car"
+}
+# Round-2 dataset zones sit south/east of base (drone/dataset_collection_round2.py);
+# the Forest exclusion notch below is enlarged from the original -50..50 square
+# to -50..90 x -115..50 so procedural cherry trees can't spawn on top of them.
 Forest {
   translation 0 0 -0.01
   shape [
     200 200
     200 0
-    50 0
-    50 50
+    90 0
+    90 50
     -50 50
-    -50 -50
-    50 -50
-    50 0
+    -50 -115
+    90 -115
+    90 0
     200 0
     200 -200
     -200 -200

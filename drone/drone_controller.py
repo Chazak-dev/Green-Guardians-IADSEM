@@ -127,6 +127,11 @@ class DroneController:
         self._camera_pitch_motor.setPosition(0.7)
         self._armed = True
 
+    def set_camera_pitch(self, angle):
+        """Adjust the camera's downward tilt in radians (arm() sets 0.7 by default)."""
+        self._require_connected()
+        self._camera_pitch_motor.setPosition(angle)
+
     def takeoff(self, altitude=1.5, max_steps=2000):
         """Climb straight up (holding x/y) until `altitude` metres is reached."""
         self._require_armed()

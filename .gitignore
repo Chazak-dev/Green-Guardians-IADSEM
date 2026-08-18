@@ -4,9 +4,20 @@ __pycache__/
 *.pyc
 .DS_Store
 *.wbproj
+drone/webots_world/.*.jpg
 
 # generated output, not source (see config: "results ... normally gitignored")
 results/images/*
 !results/images/.gitkeep
 results/videos/*
 !results/videos/.gitkeep
+
+# training dataset for Person 2 - large generated image sets, not source
+image_for_model/
+filtered_images/
+
+# YOLO training outputs (Person 1)
+
+
+# editor settings
+.vscode/
