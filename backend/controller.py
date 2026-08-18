@@ -8,15 +8,16 @@ for periodically calling check_investigation_timeout(). This class only
 reacts to whatever it's handed, one call at a time, which keeps it
 trivially testable without any real AI/drone connection.
 
-BE-06 (a real alert manager) and BE-07 (logger) don't exist yet, so alert
-creation is done minimally here for now - see the TODO markers below for
-where that plugs in once those pieces exist.
+BE-06's AlertManager (backend/alert_manager.py) owns alert construction and
+duplicate suppression. BE-07 (logger) doesn't exist yet - see the TODO
+markers below for where that plugs in once it does.
 """
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import List, Optional
 
+from backend.alert_manager import AlertManager
 from backend.state_machine import MissionStateMachine
 from shared.constants import (
     CAMERA_HEIGHT,
@@ -28,10 +29,17 @@ from shared.constants import (
     CONFIRMATION_TIMEOUT_SECONDS,
     DetectionSource,
     Hazard,
+    InvestigationOutcome,
     InvestigationStatus,
     MissionState,
 )
-from shared.models import AlertOutput, DashboardStatusOutput, DetectionInput, DroneStatus
+from shared.models import (
+    AlertOutput,
+    DashboardStatusOutput,
+    DetectionInput,
+    DroneStatus,
+    InvestigationResult,
+)
 
 _INVESTIGATION_STATUS_BY_MISSION_STATE = {
     MissionState.HAZARD_DETECTED: InvestigationStatus.ACTIVE,
@@ -121,8 +129,8 @@ class MissionController:
         self.state_machine = MissionStateMachine()
         self.latest_detection: Optional[DetectionInput] = None
         self.latest_drone_status: Optional[DroneStatus] = None
-        self.latest_alert: Optional[AlertOutput] = None  # TODO(BE-06): set once alert manager exists
-        self.confirmed_alert_count = 0
+        self.alert_manager = AlertManager()
+        self.latest_alert: Optional[AlertOutput] = None
         self.pending_candidates: List[DetectionInput] = []  # lower-priority incidents from handle_detections()
         self.active_investigation: Optional[_ActiveInvestigation] = None
 
@@ -154,7 +162,7 @@ class MissionController:
         self.pending_candidates = representatives[1:]
         # TODO(BE-07): log pending_candidates as logged-for-later
         return triggered
-
+    
     def start_investigation(self) -> bool:
         """Move HAZARD_DETECTED -> INVESTIGATING and open a confirmation
         window for the current candidate. Nothing calls this yet: the real
@@ -221,19 +229,19 @@ class MissionController:
             else self.latest_detection.position
         )
         self.state_machine.transition(MissionState.CONFIRMED)
-        # TODO(BE-06): a real alert manager owns this construction; kept minimal here for now.
-        self.latest_alert = AlertOutput(
-            alert_id=f"alert-{uuid.uuid4().hex[:8]}",
+        investigation_result = InvestigationResult(
             investigation_id=inv.investigation_id,
             detection_id=inv.detection_id,
-            timestamp=_now_iso(),
+            started_at=inv.started_at,
+            completed_at=_now_iso(),
             hazard=inv.hazard,
-            status="CONFIRMED",
-            confidence=inv.representative_confidence,
-            observed_position=observed_position,
+            result=InvestigationOutcome.CONFIRMED,
+            observations_checked=inv.observations_checked,
+            positive_observations=inv.positive_observations,
+            representative_confidence=inv.representative_confidence,
             evidence_image_path=self.latest_detection.image_path,
         )
-        self.confirmed_alert_count += 1
+        self.latest_alert = self.alert_manager.create_alert(investigation_result, observed_position)
         self.state_machine.transition(MissionState.PATROL)
         self.active_investigation = None
         return True
@@ -261,6 +269,11 @@ class MissionController:
         # mission_controller.rules: "Only one investigation may be active at a time."
         if self.state_machine.state != MissionState.PATROL:
             return False
+
+        # shared_policy.duplicate_rule: within the suppression radius of the last
+        # confirmed alert's observed_position, treat this as the same physical fire.
+        if self.alert_manager.is_suppressed(detection.position):
+            return False  # TODO(BE-07): log distinctly from a low-confidence rejection
 
         # shared_policy.candidate_trigger: confidence >= 0.60 during PATROL.
         if detection.confidence < CANDIDATE_TRIGGER_THRESHOLD:
@@ -298,7 +311,7 @@ class MissionController:
             ),
             latest_detection=self.latest_detection,
             latest_alert=self.latest_alert,
-            confirmed_alert_count=self.confirmed_alert_count,
+            confirmed_alert_count=len(self.alert_manager.alert_history),
             evidence_image_path=self._evidence_image_path(),
         )
 

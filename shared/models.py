@@ -120,9 +120,9 @@ class DetectionInput:
 @dataclass
 class InvestigationResult:
     # Config: backend_contracts.investigation_result (owner: person_3).
-    # Produced by backend/state_machine.py when an INVESTIGATING candidate's
-    # observation window closes; consumed by backend/alert_manager.py to
-    # decide whether to create an AlertOutput.
+    # Produced by backend/controller.py's _confirm_investigation() when an
+    # INVESTIGATING candidate's observation window closes CONFIRMED; consumed
+    # by backend/alert_manager.py's create_alert() to build the AlertOutput.
     # Sent: person_3 -> person_3 (internal backend handoff, not cross-person).
     investigation_id: str
     detection_id: str

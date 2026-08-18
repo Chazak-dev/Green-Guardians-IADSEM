@@ -25,8 +25,8 @@
 
 ## Phase 4 — Alert System — **BE-06**
 - [x] Alert shape defined (`AlertOutput`, includes `observed_position`)
-- [ ] Alert manager class (`backend/alert_manager.py` empty)
-- [ ] Deduplication logic (`backend_policy.alerting.duplicate_rule` — documented, not coded)
+- [x] Alert manager class (`backend/alert_manager.py`: `AlertManager.create_alert()` builds `AlertOutput` from an `InvestigationResult`, tracked in `alert_history`)
+- [x] Deduplication logic — replaced the stale time-based `shared_policy.duplicate_rule` (8s, based on since-invalid AirSim waypoint/speed assumptions) with position-based suppression: `AlertManager.is_suppressed()` checks horizontal distance to the last confirmed alert against `POST_ALERT_SUPPRESSION_RADIUS_M` (5m); wired into `MissionController.handle_detection()`
 
 ## Phase 5 — Logging — **BE-07**
 - [x] Log event shape defined (`LogEvent`, `LogEventType`)

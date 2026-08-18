@@ -27,6 +27,15 @@ CONFIRMATION_REQUIRED_POSITIVE_FRAMES = 3
 CONFIRMATION_CONFIDENCE_THRESHOLD = 0.65
 CONFIRMATION_TIMEOUT_SECONDS = 15
 
+# Config: shared_policy.post_alert_suppression_radius_m / duplicate_rule - after a
+# confirmed alert, suppress new PATROL-phase candidates within this many horizontal
+# (x,y) metres of that alert's observed_position: probably the same physical fire, not
+# a new one. Replaces an earlier time-based number (post_alert_suppression_seconds: 8)
+# that assumed AirSim-era constant patrol speed and 15m waypoint spacing - the real
+# drone has no constant commanded speed (drone.flight_control is a PID stabilization
+# loop), so travel time is not a reliable "same location" proxy; distance is.
+POST_ALERT_SUPPRESSION_RADIUS_M = 5.0
+
 
 class MissionState(StrEnum):
     # Config: mission_controller.states
