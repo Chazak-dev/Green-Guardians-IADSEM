@@ -14,6 +14,19 @@ from enum import StrEnum
 CAMERA_WIDTH = 640
 CAMERA_HEIGHT = 480
 
+# Config: shared_policy.candidate_trigger.threshold - during PATROL, a
+# fire/smoke detection at or above this confidence creates a candidate and
+# triggers investigation.
+CANDIDATE_TRIGGER_THRESHOLD = 0.60
+
+# Config: shared_policy.confirmation - while INVESTIGATING, check fresh
+# investigation-source frames against these thresholds to decide
+# CONFIRMED vs REJECTED.
+CONFIRMATION_FRESH_FRAMES_TO_CHECK = 5
+CONFIRMATION_REQUIRED_POSITIVE_FRAMES = 3
+CONFIRMATION_CONFIDENCE_THRESHOLD = 0.65
+CONFIRMATION_TIMEOUT_SECONDS = 15
+
 
 class MissionState(StrEnum):
     # Config: mission_controller.states

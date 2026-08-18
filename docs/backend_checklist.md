@@ -19,9 +19,9 @@
 ## Phase 3 — Mission Controller
 - [x] States defined — `MissionState`: `IDLE, TAKEOFF, PATROL, HAZARD_DETECTED, INVESTIGATING, CONFIRMED, REJECTED, RETURN_HOME, LANDING, LANDED, ERROR`
 - [x] **BE-02** — State machine logic (`backend/state_machine.py`: `MissionStateMachine`, `TRANSITIONS` table; ERROR recoverable to IDLE)
-- [ ] **BE-03** — Controller orchestration (`backend/controller.py` empty)
-- [ ] **BE-04** — Investigation policy (`shared_policy.candidate_trigger`/`simultaneous_detections` — documented, not coded)
-- [ ] **BE-05** — Confirmation/timeout rule (`shared_policy.confirmation`/`backend_policy.investigation` — documented, not coded)
+- [x] **BE-03** — Controller orchestration (`backend/controller.py`: `MissionController.handle_detection()`/`handle_drone_status()`/`get_dashboard_status()`; CONFIRMED/REJECTED->alert/log path deferred to BE-04/06/07)
+- [x] **BE-04** — Investigation policy (`backend/controller.py`: `handle_detections()` groups simultaneous candidates via the 3x3-region rule, investigates highest-confidence incident first, stashes rest in `pending_candidates`; `start_investigation()` moves HAZARD_DETECTED->INVESTIGATING, not yet called anywhere since drone/'s investigation maneuver isn't built)
+- [x] **BE-05** — Confirmation/timeout rule (`backend/controller.py`: `handle_investigation_observation()` tracks a 3-of-5 confirmation window per `_ActiveInvestigation`, resolves early on 3 positive or 5 checked; `check_investigation_timeout()` force-rejects after 15s with no data - must be called periodically by the future orchestration loop; builds a minimal `AlertOutput` on CONFIRMED, full alert manager still BE-06)
 
 ## Phase 4 — Alert System — **BE-06**
 - [x] Alert shape defined (`AlertOutput`, includes `observed_position`)
