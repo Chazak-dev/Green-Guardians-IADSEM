@@ -11,6 +11,7 @@ results/images/*
 !results/images/.gitkeep
 results/videos/*
 !results/videos/.gitkeep
+results/*.jsonl
 
 # training dataset for Person 2 - large generated image sets, not source
 image_for_model/
