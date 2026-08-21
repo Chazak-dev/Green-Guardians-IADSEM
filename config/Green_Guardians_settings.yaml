@@ -151,6 +151,27 @@ shared_policy:
   duplicate_rule: "After a confirmed alert, suppress new PATROL-phase fire/smoke candidates within post_alert_suppression_radius_m (5m, horizontal x,y distance only - altitude is not part of the comparison) of that alert's observed_position: do not start another investigation or create another alert for a candidate in that radius, while the drone continues patrolling normally. Candidates outside the radius are processed under the normal policy (shared_policy.candidate_trigger). This is position-based, not time-based: drone/drone_controller.py's flight control is a per-tick PID stabilization loop with no constant commanded speed (see drone.flight_control), so travel time between waypoints is not a reliable proxy for 'still near the same fire' - physical distance is, regardless of how long it took to get there or how sharp the turns were. 5m was chosen to sit between the ~2m investigation approach distance (drone.investigation_maneuver.investigation_approach_m) and the real ~5-8m gap between adjacent patrol waypoints (drone.patrol_route), so it should absorb investigation-position noise around one fire without spilling into a neighboring waypoint's genuinely different location. Tune here if either of those numbers changes."
 
 # -----------------------------------------------------------------------------
+# INVESTIGATION MANEUVER - team agreement, not yet implemented
+# drone.investigation_maneuver.status: not_yet_implemented. This section is
+# the WHAT/WHY the team should agree on; the exact coordinate math and code
+# structure are person_2's implementation call, not specified here.
+# -----------------------------------------------------------------------------
+investigation:
+  status: proposed_by_person_3_pending_team_agreement
+  owner: person_2
+  meaning: "A genuine, physical response to a detected hazard - not just re-labeling the same frame that triggered HAZARD_DETECTED. The drone must actually do something different and capture NEW observations."
+  baseline_maneuver:
+    - "Pause the patrol route exactly where the drone is; remember which waypoint it was heading to, so it can resume from there later."
+    - "Hold/hover in place briefly to stabilize."
+    - "Use where the fire appeared in the triggering frame (left/center/right) as a rough direction hint - NOT a real GPS or 3D location."
+    - "Move a small, bounded distance (drone.investigation_maneuver.investigation_approach_m, 2m) toward that direction, only if safe in the current scene."
+    - "Hold position there while 5 fresh camera frames are captured and sent to the AI model for re-checking (already fully implemented on the backend side - see shared_policy.confirmation)."
+    - "Once the backend resolves CONFIRMED or REJECTED, resume the patrol route from where it paused."
+  safety_fallback: "If the direction-based approach isn't reliable enough to build in time, hovering in place (no directional movement) while still capturing the 5 frames is an acceptable fallback - a simple working version beats none."
+  out_of_scope: "Real 3-D/GPS geolocation of the hazard. Nobody should try to calculate its exact position - see contracts.navigation_command.target_hint and shared_policy.duplicate_rule's observed_position note for why this project deliberately avoids that."
+  not_specified_here: "The exact coordinate math for turning a bbox direction hint into a flight target, the method name/signature, and how it's wired into drone/drone_controller.py - left to person_2's implementation judgment."
+
+# -----------------------------------------------------------------------------
 # IMPLEMENTATION BASELINES - owners can tune after measurement
 # -----------------------------------------------------------------------------
 ai:
