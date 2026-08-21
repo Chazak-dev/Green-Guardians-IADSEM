@@ -30,8 +30,8 @@
 
 ## Phase 5 — Logging — **BE-07**
 - [x] Log event shape defined (`LogEvent`, `LogEventType`)
-- [ ] Logger class (`backend/logger.py` empty)
-- [ ] Writing to `results/mission_log.jsonl` — not implemented
+- [x] Logger class (`backend/logger.py`: `Logger.log()` appends one JSON line per `LogEvent`, creates `results/` if missing)
+- [x] Writing to `results/mission_log.jsonl` — all 9 log points in `backend/controller.py` wired via the `_log()` helper (rejected/accepted inputs, state changes, investigation results, alerts, errors); `.gitignore` updated so the generated log file itself isn't tracked
 
 ## Phase 6 — Integration
 - [x] Groundwork laid — `DetectorProtocol`/`DroneProtocol` ready for `controller.py` to type against

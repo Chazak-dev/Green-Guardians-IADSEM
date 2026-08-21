@@ -36,6 +36,10 @@ CONFIRMATION_TIMEOUT_SECONDS = 15
 # loop), so travel time is not a reliable "same location" proxy; distance is.
 POST_ALERT_SUPPRESSION_RADIUS_M = 5.0
 
+# Config: logging.output_path - JSONL file backend/logger.py appends one
+# LogEvent per line to.
+LOG_OUTPUT_PATH = "results/mission_log.jsonl"
+
 
 class MissionState(StrEnum):
     # Config: mission_controller.states

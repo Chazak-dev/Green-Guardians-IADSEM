@@ -9,8 +9,8 @@ reacts to whatever it's handed, one call at a time, which keeps it
 trivially testable without any real AI/drone connection.
 
 BE-06's AlertManager (backend/alert_manager.py) owns alert construction and
-duplicate suppression. BE-07 (logger) doesn't exist yet - see the TODO
-markers below for where that plugs in once it does.
+duplicate suppression. BE-07's Logger (backend/logger.py) owns writing
+LogEvent records to results/mission_log.jsonl via the private _log() helper.
 """
 import uuid
 from dataclasses import dataclass
@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from backend.alert_manager import AlertManager
+from backend.logger import Logger
 from backend.state_machine import MissionStateMachine
 from shared.constants import (
     CAMERA_HEIGHT,
@@ -31,6 +32,7 @@ from shared.constants import (
     Hazard,
     InvestigationOutcome,
     InvestigationStatus,
+    LogEventType,
     MissionState,
 )
 from shared.models import (
@@ -39,6 +41,7 @@ from shared.models import (
     DetectionInput,
     DroneStatus,
     InvestigationResult,
+    LogEvent,
 )
 
 _INVESTIGATION_STATUS_BY_MISSION_STATE = {
@@ -131,8 +134,24 @@ class MissionController:
         self.latest_drone_status: Optional[DroneStatus] = None
         self.alert_manager = AlertManager()
         self.latest_alert: Optional[AlertOutput] = None
+        self.logger = Logger()
         self.pending_candidates: List[DetectionInput] = []  # lower-priority incidents from handle_detections()
         self.active_investigation: Optional[_ActiveInvestigation] = None
+
+    def _log(self, event_type: str, message: str, *, detection_id=None,
+             investigation_id=None, alert_id=None, details=None) -> None:
+        """logging.record: build a LogEvent from whatever's relevant and append it."""
+        self.logger.log(LogEvent(
+            event_id=f"event-{uuid.uuid4().hex[:8]}",
+            timestamp=_now_iso(),
+            event_type=event_type,
+            message=message,
+            mission_state=self.state_machine.state,
+            detection_id=detection_id,
+            investigation_id=investigation_id,
+            alert_id=alert_id,
+            details=details,
+        ))
 
     def handle_detections(self, detections: List[DetectionInput]) -> bool:
         """Process every detection from one frame at once. Groups simultaneous
@@ -140,9 +159,14 @@ class MissionController:
         investigates the highest-confidence incident first via
         handle_detection(), and stashes the rest in pending_candidates.
         Returns whether the top incident triggered a state change."""
-        valid = [d for d in detections if self._is_valid_detection(d)]
-        # TODO(BE-07): log the dropped ones as INPUT_REJECTED
-
+        valid = []
+        for d in detections:
+            if self._is_valid_detection(d):
+                valid.append(d)
+            else:
+                self._log(LogEventType.INPUT_REJECTED, "Detection rejected: invalid fields",
+                           detection_id=d.detection_id)
+        
         investigation_phase = [d for d in valid if d.source != DetectionSource.PATROL]
         for det in investigation_phase:
             self.handle_investigation_observation(det)  # no grouping - not competing for "investigate first"
@@ -160,7 +184,9 @@ class MissionController:
 
         triggered = self.handle_detection(representatives[0])
         self.pending_candidates = representatives[1:]
-        # TODO(BE-07): log pending_candidates as logged-for-later
+        for pending in self.pending_candidates:
+            self._log(LogEventType.INPUT_ACCEPTED, "Lower-priority candidate logged for later investigation",
+                       detection_id=pending.detection_id, details={"status": "pending"})
         return triggered
     
     def start_investigation(self) -> bool:
@@ -188,7 +214,10 @@ class MissionController:
             return False  # nothing active to check this against
 
         if not self._is_valid_detection(detection):
-            return False  # TODO(BE-07): log as INPUT_REJECTED
+            self._log(LogEventType.INPUT_REJECTED, "Investigation observation rejected: invalid fields",
+                       detection_id=detection.detection_id,
+                       investigation_id=self.active_investigation.investigation_id)
+            return False
 
         self.latest_detection = detection
 
@@ -242,23 +271,30 @@ class MissionController:
             evidence_image_path=self.latest_detection.image_path,
         )
         self.latest_alert = self.alert_manager.create_alert(investigation_result, observed_position)
+        self._log(LogEventType.INVESTIGATION_RESULT, f"Investigation {inv.investigation_id} CONFIRMED",
+                   investigation_id=inv.investigation_id, detection_id=inv.detection_id)
+        self._log(LogEventType.ALERT_CREATED, f"Confirmed {inv.hazard} alert created",
+                   investigation_id=inv.investigation_id, alert_id=self.latest_alert.alert_id)
         self.state_machine.transition(MissionState.PATROL)
         self.active_investigation = None
         return True
-        # TODO(BE-07): log INVESTIGATION_RESULT and ALERT_CREATED
 
     def _reject_investigation(self) -> bool:
+        inv = self.active_investigation
         self.state_machine.transition(MissionState.REJECTED)
+        self._log(LogEventType.INVESTIGATION_RESULT, f"Investigation {inv.investigation_id} REJECTED",
+                   investigation_id=inv.investigation_id, detection_id=inv.detection_id)
         self.state_machine.transition(MissionState.PATROL)
         self.active_investigation = None
         return True
-        # TODO(BE-07): log INVESTIGATION_RESULT (no alert created)
 
     def handle_detection(self, detection: DetectionInput) -> bool:
         """Process a new detection. Returns whether it triggered a state change."""
         # backend_policy.failure_handling.malformed_input: reject and keep running
         if not self._is_valid_detection(detection):
-            return False  # TODO(BE-07): log as INPUT_REJECTED
+            self._log(LogEventType.INPUT_REJECTED, "Detection rejected: invalid fields",
+                       detection_id=detection.detection_id)
+            return False
 
         self.latest_detection = detection
 
@@ -273,22 +309,30 @@ class MissionController:
         # shared_policy.duplicate_rule: within the suppression radius of the last
         # confirmed alert's observed_position, treat this as the same physical fire.
         if self.alert_manager.is_suppressed(detection.position):
-            return False  # TODO(BE-07): log distinctly from a low-confidence rejection
+            self._log(LogEventType.INPUT_REJECTED, "Detection rejected: suppressed as duplicate of recent alert",
+                       detection_id=detection.detection_id)
+            return False
 
         # shared_policy.candidate_trigger: confidence >= 0.60 during PATROL.
         if detection.confidence < CANDIDATE_TRIGGER_THRESHOLD:
             return False
 
-        return self.state_machine.transition(MissionState.HAZARD_DETECTED)
-        # TODO(BE-07): log as INPUT_ACCEPTED / STATE_CHANGE
+        triggered = self.state_machine.transition(MissionState.HAZARD_DETECTED)
+        if triggered:
+            self._log(LogEventType.INPUT_ACCEPTED, f"Detection accepted as candidate (hazard={detection.hazard})",
+                       detection_id=detection.detection_id)
+            self._log(LogEventType.STATE_CHANGE, "PATROL -> HAZARD_DETECTED", detection_id=detection.detection_id)
+        return triggered
 
     def handle_drone_status(self, status: DroneStatus) -> bool:
         """Record the drone's latest status. Returns whether it forced a state change."""
         self.latest_drone_status = status
     
         if not status.connected:
-            return self.state_machine.transition(MissionState.ERROR)
-            # TODO(BE-07): log as ERROR if this actually changed state
+            changed = self.state_machine.transition(MissionState.ERROR)
+            if changed:
+                self._log(LogEventType.ERROR, "Drone disconnected, forcing ERROR state")
+            return changed
 
         return False
 
