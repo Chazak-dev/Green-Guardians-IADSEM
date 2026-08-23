@@ -54,6 +54,19 @@ class DroneController:
     TARGET_PRECISION_M = 0.5  # how close counts as "arrived", in x/y metres
     ALTITUDE_PRECISION_M = 0.3
 
+    # investigate()'s movement-only maneuver (config: drone.investigation_maneuver).
+    INVESTIGATION_APPROACH_M = 2.0  # config: investigation_approach_m
+    INVESTIGATION_ANGLE_RAD = math.radians(30)  # left/right lateral offset from current heading
+    INVESTIGATION_LEFT_FRAC = 0.4  # bbox-center-x / image_width below this -> "left"
+    INVESTIGATION_RIGHT_FRAC = 0.6  # above this -> "right"; between -> "center"
+    INVESTIGATION_HOLD_STEPS = 50  # brief settle/hold before and after the approach hop
+    # Looser than TARGET_PRECISION_M (0.5m) on purpose: the maneuver is
+    # explicitly a rough nudge, not precise navigation, and the standard
+    # patrol-leg precision measured as needing up to ~18000 steps to satisfy
+    # on a hop this short - tested live in Webots during development.
+    INVESTIGATION_XY_PRECISION_M = 1.2
+    INVESTIGATION_MAX_STEPS = 5000  # tuned against the loosened precision above, live in Webots
+
     def __init__(self):
         self._robot = None
         self._timestep = None
@@ -108,6 +121,17 @@ class DroneController:
         self._step()
         return tuple(self._gps.getValues())
 
+    def get_heading(self):
+        """Return the drone's current yaw in radians (world frame).
+
+        Matches the atan2(dy, dx) convention _heading_disturbance uses for
+        target_yaw: 0 rad faces +x, increasing (counter-clockwise) turns
+        toward +y.
+        """
+        self._require_connected()
+        self._step()
+        return self._imu.getRollPitchYaw()[2]
+
     def disconnect(self):
         """Stop the motors and release our handle on the simulation."""
         if self._motors:
@@ -159,13 +183,74 @@ class DroneController:
         self._armed = False
         return position
 
-    def _fly_to(self, target_xy, target_altitude, max_steps):
-        """Run the stabilization loop until the drone reaches target_xy/target_altitude."""
+    def investigate(self, target_hint=None, max_steps=INVESTIGATION_MAX_STEPS):
+        """Movement-only investigation maneuver (config: drone.investigation_maneuver).
+
+        Pauses, holds briefly, nudges up to INVESTIGATION_APPROACH_M toward
+        the rough left/center/right direction target_hint's bbox suggests
+        (duck-typed: needs .bbox [x1,y1,x2,y2] and .image_width, e.g.
+        shared.models.TargetHint), then holds again. Does NOT touch the
+        camera or call the AI model - that's the caller's job, in its own
+        loop, once this returns.
+
+        Safety: bounded to a small lateral hop at unchanged altitude, so it
+        stays at the already-obstacle-clear cruise altitude the patrol route
+        was validated at, rather than requiring proximity sensing this
+        project doesn't have.
+
+        Never raises: a missing/malformed target_hint, or a directional hop
+        that can't converge within max_steps, both fall back to holding
+        wherever the drone already is (config's safety_fallback) instead of
+        crashing the caller's investigation loop.
+
+        Returns the (x, y, z) the drone ends up holding at.
+        """
+        self._require_armed()
+
+        x, y, z = self.get_position()
+        self._hold_position(x, y, z, self.INVESTIGATION_HOLD_STEPS)
+
+        offset = self._investigation_offset(target_hint)
+        if offset is not None:
+            heading = self.get_heading()
+            target_angle = heading + offset
+            target_x = x + self.INVESTIGATION_APPROACH_M * math.cos(target_angle)
+            target_y = y + self.INVESTIGATION_APPROACH_M * math.sin(target_angle)
+            try:
+                x, y, z = self._fly_to(
+                    target_xy=(target_x, target_y), target_altitude=z, max_steps=max_steps,
+                    xy_precision=self.INVESTIGATION_XY_PRECISION_M,
+                )
+            except RuntimeError as exc:
+                print(f"Warning: investigate() could not reach approach point ({exc}); "
+                      f"holding at current position instead.")
+                x, y, z = self.get_position()
+
+        self._hold_position(x, y, z, self.INVESTIGATION_HOLD_STEPS)
+        return (x, y, z)
+
+    def _fly_to(self, target_xy, target_altitude, max_steps,
+                xy_precision=None, altitude_precision=None):
+        """Run the stabilization loop until the drone reaches target_xy/target_altitude.
+
+        xy_precision/altitude_precision default to TARGET_PRECISION_M/
+        ALTITUDE_PRECISION_M (patrol-leg precision). investigate() passes a
+        looser xy_precision for its short 2m hop - the controller here is
+        tuned for multi-metre patrol legs, and empirically takes far longer
+        than is reasonable to settle within 0.5m on a target only 2m away
+        (observed needing up to ~18000 steps in testing, plausibly blowing
+        the backend's 15s investigation timeout on its own) - a rough
+        investigative nudge doesn't need that tight a tolerance.
+        """
+        xy_precision = self.TARGET_PRECISION_M if xy_precision is None else xy_precision
+        altitude_precision = (
+            self.ALTITUDE_PRECISION_M if altitude_precision is None else altitude_precision
+        )
         target_x, target_y = target_xy
         for _ in range(max_steps):
             x, y, altitude = self._stabilize_step(target_x, target_y, target_altitude)
-            close_enough_xy = math.hypot(target_x - x, target_y - y) < self.TARGET_PRECISION_M
-            close_enough_altitude = abs(target_altitude - altitude) < self.ALTITUDE_PRECISION_M
+            close_enough_xy = math.hypot(target_x - x, target_y - y) < xy_precision
+            close_enough_altitude = abs(target_altitude - altitude) < altitude_precision
             if close_enough_xy and close_enough_altitude:
                 return (x, y, altitude)
         raise RuntimeError(
@@ -203,6 +288,33 @@ class DroneController:
 
         self._step()
         return x, y, altitude
+
+    def _hold_position(self, x, y, z, steps):
+        """Run a fixed number of stabilization ticks at (x, y, z) - a brief
+        hover with no convergence check, unlike _fly_to."""
+        for _ in range(steps):
+            self._stabilize_step(x, y, z)
+
+    @staticmethod
+    def _investigation_offset(target_hint):
+        """Bucket a TargetHint-shaped bbox center into a left/center/right
+        lateral angle offset (radians) from the drone's current heading.
+
+        Returns None only when target_hint is missing/malformed, signalling
+        investigate() to skip directional movement entirely (safety_fallback:
+        hover in place). A center hint returns 0.0 (still moves, straight
+        ahead) - callers with no hint at all should pass target_hint=None.
+        """
+        if not target_hint or not getattr(target_hint, "bbox", None) \
+                or not getattr(target_hint, "image_width", None):
+            return None
+        x1, _, x2, _ = target_hint.bbox
+        frac = ((x1 + x2) / 2) / target_hint.image_width
+        if frac < DroneController.INVESTIGATION_LEFT_FRAC:
+            return DroneController.INVESTIGATION_ANGLE_RAD
+        if frac > DroneController.INVESTIGATION_RIGHT_FRAC:
+            return -DroneController.INVESTIGATION_ANGLE_RAD
+        return 0.0
 
     @staticmethod
     def _heading_disturbance(target_x, target_y, x, y, yaw):

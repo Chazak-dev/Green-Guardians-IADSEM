@@ -35,3 +35,9 @@ class DroneProtocol(Protocol):
 
     def get_position(self) -> tuple:
         ...
+
+    def get_heading(self) -> float:
+        ...
+
+    def investigate(self, target_hint=None, max_steps: int = ...) -> tuple:
+        ...
