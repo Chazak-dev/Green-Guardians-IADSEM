@@ -80,6 +80,18 @@ class DroneController:
         self._connected = False
         self._armed = False
 
+    @property
+    def connected(self):
+        """contracts.drone_status.connected: read-only mirror of _connected,
+        so callers (main.py's orchestration loop) can report real status
+        without reaching into a private attribute."""
+        return self._connected
+
+    @property
+    def armed(self):
+        """contracts.drone_status.armed: read-only mirror of _armed."""
+        return self._armed
+
     def connect(self):
         """Connect to the running simulation and enable the drone's sensors."""
         self._robot = Robot()

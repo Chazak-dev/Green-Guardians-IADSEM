@@ -2,11 +2,11 @@
 decision policy, and drives the state machine. Config: mission_controller
 (owner: person_3).
 
-No loop lives here - something else (main.py, eventually) is responsible
-for repeatedly pulling from ai/ and drone/ and calling these methods, and
-for periodically calling check_investigation_timeout(). This class only
-reacts to whatever it's handed, one call at a time, which keeps it
-trivially testable without any real AI/drone connection.
+No loop lives here - main.py's OrchestrationMission (BE-08/BE-09) is
+responsible for repeatedly pulling from ai/ and drone/ and calling these
+methods, and for periodically calling check_investigation_timeout(). This
+class only reacts to whatever it's handed, one call at a time, which keeps
+it trivially testable without any real AI/drone connection.
 
 BE-06's AlertManager (backend/alert_manager.py) owns alert construction and
 duplicate suppression. BE-07's Logger (backend/logger.py) owns writing
@@ -191,11 +191,9 @@ class MissionController:
     
     def start_investigation(self) -> bool:
         """Move HAZARD_DETECTED -> INVESTIGATING and open a confirmation
-        window for the current candidate. Nothing calls this yet: the real
-        trigger should be the drone confirming it has begun the investigation
-        maneuver, and drone/ doesn't implement that maneuver yet (config:
-        drone.investigation_maneuver.status: not_yet_implemented). This
-        exists so BE-09 has something ready to call once it does."""
+        window for the current candidate. Called by main.py's orchestration
+        loop (BE-09) right before drone.investigate() physically moves the
+        drone (config: drone.investigation_maneuver, implemented)."""
         if not self.state_machine.transition(MissionState.INVESTIGATING):
             return False
         self.active_investigation = _ActiveInvestigation(
@@ -206,31 +204,40 @@ class MissionController:
         )
         return True
 
-    def handle_investigation_observation(self, detection: DetectionInput) -> bool:
-        """Process one fresh investigation-phase frame against the active
-        investigation's confirmation window (shared_policy.confirmation).
+    def handle_investigation_observation(self, detection: Optional[DetectionInput]) -> bool:
+        """Process one fresh investigation-phase frame's outcome
+        (shared_policy.confirmation). `detection` is None when ai/detector.py's
+        detect() saw nothing this frame - that's a real, countable non-positive
+        check, not invalid input to be skipped or faked: a frame with nothing
+        to report is not the same thing as a malformed DetectionInput, and
+        skipping it would let a hazard hide by producing empty frames.
         Returns whether it resolved the investigation (CONFIRMED/REJECTED)."""
         if self.active_investigation is None or self.state_machine.state != MissionState.INVESTIGATING:
             return False  # nothing active to check this against
 
-        if not self._is_valid_detection(detection):
+        if detection is not None and not self._is_valid_detection(detection):
             self._log(LogEventType.INPUT_REJECTED, "Investigation observation rejected: invalid fields",
                        detection_id=detection.detection_id,
                        investigation_id=self.active_investigation.investigation_id)
             return False
 
-        self.latest_detection = detection
-
         inv = self.active_investigation
         inv.observations_checked += 1
-        # same_hazard_required: true - must match the ORIGINAL candidate's hazard.
-        is_positive = (
-            detection.hazard == inv.hazard
-            and detection.confidence >= CONFIRMATION_CONFIDENCE_THRESHOLD
-        )
-        if is_positive:
-            inv.positive_observations += 1
-            inv.representative_confidence = max(inv.representative_confidence, detection.confidence)
+
+        if detection is not None:
+            self.latest_detection = detection
+            # same_hazard_required: true - must match the ORIGINAL candidate's hazard.
+            is_positive = (
+                detection.hazard == inv.hazard
+                and detection.confidence >= CONFIRMATION_CONFIDENCE_THRESHOLD
+            )
+            if is_positive:
+                inv.positive_observations += 1
+                inv.representative_confidence = max(inv.representative_confidence, detection.confidence)
+        else:
+            self._log(LogEventType.INPUT_ACCEPTED, "Investigation frame checked: no hazard observed",
+                       investigation_id=inv.investigation_id,
+                       details={"observations_checked": inv.observations_checked})
 
         if inv.positive_observations >= CONFIRMATION_REQUIRED_POSITIVE_FRAMES:
             return self._confirm_investigation()

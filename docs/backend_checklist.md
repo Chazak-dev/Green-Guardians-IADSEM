@@ -35,8 +35,7 @@
 
 ## Phase 6 — Integration
 - [x] Groundwork laid — `DetectorProtocol`/`DroneProtocol` ready for `controller.py` to type against
-- [ ] **BE-08** — Integrate real `FireSmokeDetector` from `ai/detector.py`
-- [ ] **BE-09** — Integrate real `DroneController` from `drone/drone_controller.py`
+- [x] **BE-08**/**BE-09** — `main.py`'s `OrchestrationMission` ties `drone/`, `ai/`, and `backend/` together: patrol loop, detection adapter, investigation sub-loop (`investigate()` + up to 5 fresh-frame checks + timeout), takeoff/land failure handling. Verified with fakes (7 scenarios: happy path, all-reject, multi-detection reduction, move_to/takeoff/land failures) - not yet run against live Webots/a real trained model (Tier 2, needs a live session)
 
 ## Phase 7 — Testing
 - [ ] Mock scenario files — 5 scenario names exist in config, no files in `sample_data/` yet
