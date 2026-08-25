@@ -145,19 +145,17 @@ shared_policy:
     same_hazard_required: true
     timeout_seconds: 15
     rule: "CONFIRMED when the original hazard class appears in >=3 of 5 fresh investigation frames at confidence >=0.65 before timeout; otherwise REJECTED."
-  after_confirmed: "Create one alert, log it, command RESUME_PATROL. Implemented: backend/controller.py's _confirm_investigation() transitions the internal MissionState back to PATROL. NOT yet implemented: actually sending a NavigationCommand(command=RESUME_PATROL) to the drone - drone/ has no way to receive one yet, blocked on the same drone-side work as drone.investigation_maneuver."
-  after_rejected: "Log rejection, create no confirmed alert, command RESUME_PATROL. Same caveat as after_confirmed: only the internal PATROL state transition is implemented (_reject_investigation()), not an actual NavigationCommand sent to the drone."
+  after_confirmed: "Create one alert, log it, command RESUME_PATROL. Implemented: backend/controller.py's _confirm_investigation() transitions the internal MissionState back to PATROL. communication.transport is in-process Python calls, not messages, so 'commanding RESUME_PATROL' means the orchestration loop (BE-08/BE-09, not yet built) just continuing its own patrol loop after seeing the state change - no NavigationCommand object needs to be constructed or sent for this. drone.investigation_maneuver is no longer the blocker here; the orchestration loop is."
+  after_rejected: "Log rejection, create no confirmed alert, command RESUME_PATROL. Same as after_confirmed: only the internal PATROL state transition is implemented (_reject_investigation()); resuming patrol is the future orchestration loop's job, not a message to construct and send."
   post_alert_suppression_radius_m: 5
   duplicate_rule: "After a confirmed alert, suppress new PATROL-phase fire/smoke candidates within post_alert_suppression_radius_m (5m, horizontal x,y distance only - altitude is not part of the comparison) of that alert's observed_position: do not start another investigation or create another alert for a candidate in that radius, while the drone continues patrolling normally. Candidates outside the radius are processed under the normal policy (shared_policy.candidate_trigger). This is position-based, not time-based: drone/drone_controller.py's flight control is a per-tick PID stabilization loop with no constant commanded speed (see drone.flight_control), so travel time between waypoints is not a reliable proxy for 'still near the same fire' - physical distance is, regardless of how long it took to get there or how sharp the turns were. 5m was chosen to sit between the ~2m investigation approach distance (drone.investigation_maneuver.investigation_approach_m) and the real ~5-8m gap between adjacent patrol waypoints (drone.patrol_route), so it should absorb investigation-position noise around one fire without spilling into a neighboring waypoint's genuinely different location. Tune here if either of those numbers changes."
 
 # -----------------------------------------------------------------------------
-# INVESTIGATION MANEUVER - team agreement, not yet implemented
-# drone.investigation_maneuver.status: not_yet_implemented. This section is
-# the WHAT/WHY the team should agree on; the exact coordinate math and code
-# structure are person_2's implementation call, not specified here.
+# INVESTIGATION MANEUVER - implemented
+# drone.investigation_maneuver.status: implemented (DroneController.investigate()).
 # -----------------------------------------------------------------------------
 investigation:
-  status: proposed_by_person_3_pending_team_agreement
+  status: implemented
   owner: person_2
   meaning: "A genuine, physical response to a detected hazard - not just re-labeling the same frame that triggered HAZARD_DETECTED. The drone must actually do something different and capture NEW observations."
   baseline_maneuver:
@@ -169,7 +167,7 @@ investigation:
     - "Once the backend resolves CONFIRMED or REJECTED, resume the patrol route from where it paused."
   safety_fallback: "If the direction-based approach isn't reliable enough to build in time, hovering in place (no directional movement) while still capturing the 5 frames is an acceptable fallback - a simple working version beats none."
   out_of_scope: "Real 3-D/GPS geolocation of the hazard. Nobody should try to calculate its exact position - see contracts.navigation_command.target_hint and shared_policy.duplicate_rule's observed_position note for why this project deliberately avoids that."
-  not_specified_here: "The exact coordinate math for turning a bbox direction hint into a flight target, the method name/signature, and how it's wired into drone/drone_controller.py - left to person_2's implementation judgment."
+  implementation: "DroneController.investigate(target_hint=None, max_steps=...) in drone/drone_controller.py. Buckets the target_hint's bbox center into a left/center/right angle offset from DroneController.get_heading() (new method), hops INVESTIGATION_APPROACH_M (2m) in that direction via a loosened-precision _fly_to() (INVESTIGATION_XY_PRECISION_M=1.2m, not the patrol-leg TARGET_PRECISION_M=0.5m - tested live in Webots as needing up to ~18000 steps at the tighter tolerance on a hop this short, which could exceed shared_policy.confirmation.timeout_seconds on its own), and holds via a new _hold_position() helper before and after. A missing/malformed target_hint or a failed approach both fall back to holding at the current position instead of raising, matching safety_fallback. Does not touch the camera or call the AI model - the caller's investigation loop does that between calls, per handle_investigation_observation()."
 
 # -----------------------------------------------------------------------------
 # IMPLEMENTATION BASELINES - owners can tune after measurement
@@ -216,8 +214,8 @@ drone:
       - {name: exit_forest, x: -7, y: -4, z: 12.0}
       - {name: return_base, x: -1, y: -0.5, z: 12.0}
   investigation_maneuver:
-    status: not_yet_implemented
-    note: "drone/ currently only implements connect/arm/takeoff/move_to/land plus the fixed patrol route above. No investigate()/approach behavior exists yet; investigation_approach_m is a target for that future work, not current behavior."
+    status: implemented
+    note: "DroneController.investigate(target_hint=None, max_steps=...) - see the investigation: section above for the full behavior. Not yet wired into an orchestration loop (BE-08/BE-09) - nothing calls it automatically yet."
     investigation_approach_m: 2
   tuning_rule: "P2 must test scene safety; altitude/waypoints/approach may be tuned without a team vote, but changes must stay here and P1 must be told if camera view changes materially."
 
