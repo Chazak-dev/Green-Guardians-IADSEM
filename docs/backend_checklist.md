@@ -39,9 +39,9 @@
 
 ## Phase 7 — Testing
 - [ ] Mock scenario files — 5 scenario names exist in config, no files in `sample_data/` yet
-- [ ] Controller tests against mocks
-- [ ] Full workflow test
-- [ ] **BE-10** — End-to-end failure handling
+- [x] Controller tests against mocks (`tests/test_state_machine.py`, `tests/test_alert_manager.py`, `tests/test_logger.py`, `tests/test_controller.py`)
+- [x] Full workflow test (`tests/test_orchestration.py`: `OrchestrationMission` driven end-to-end with fake drone/detector doubles - confirmed happy path, all-reject, multi-box-per-frame reduction, pending-candidate follow-up investigation, move_to/takeoff/land failures). Needed a `controller` module stub in `tests/conftest.py`, since `main.py` couldn't previously be imported at all without a real Webots install.
+- [ ] **BE-10** — End-to-end failure handling (covered via fakes above; not yet run against live Webots/a real trained model)
 
 ## Phase 8 — Documentation — **BE-11**
 - [ ] Nothing written — `docs/` only has `.gitkeep`

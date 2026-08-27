@@ -157,8 +157,12 @@ class MissionController:
         """Process every detection from one frame at once. Groups simultaneous
         candidates into incidents (shared_policy.simultaneous_detections),
         investigates the highest-confidence incident first via
-        handle_detection(), and stashes the rest in pending_candidates.
-        Returns whether the top incident triggered a state change."""
+        handle_detection(), and stashes the rest in pending_candidates so a
+        later call - once the current investigation has resolved - gets a
+        chance to actually investigate them, per
+        shared_policy.simultaneous_detections: "log the others for later
+        investigation." Returns whether the top incident triggered a state
+        change."""
         valid = []
         for d in detections:
             if self._is_valid_detection(d):
@@ -166,24 +170,36 @@ class MissionController:
             else:
                 self._log(LogEventType.INPUT_REJECTED, "Detection rejected: invalid fields",
                            detection_id=d.detection_id)
-        
+
         investigation_phase = [d for d in valid if d.source != DetectionSource.PATROL]
         for det in investigation_phase:
             self.handle_investigation_observation(det)  # no grouping - not competing for "investigate first"
 
         patrol_phase = [d for d in valid if d.source == DetectionSource.PATROL]
-        if not patrol_phase:
+        carried_over, self.pending_candidates = self.pending_candidates, []
+        candidates = carried_over + patrol_phase
+        if not candidates:
             return False
 
-        incidents = _group_into_incidents(patrol_phase)
+        incidents = _group_into_incidents(candidates)
         representatives = sorted(
             (max(group, key=lambda d: d.confidence) for group in incidents),
             key=lambda d: d.confidence,
             reverse=True,
-        ) 
+        )
 
         triggered = self.handle_detection(representatives[0])
-        self.pending_candidates = representatives[1:]
+        if triggered:
+            self.pending_candidates = representatives[1:]
+        else:
+            # Not just "below threshold" or "suppressed as duplicate" - those
+            # are permanent for this candidate and shouldn't be retried. But
+            # if handle_detection() declined only because an investigation is
+            # already active (mission_controller.rules: "Only one
+            # investigation may be active at a time"), the top candidate must
+            # stay queued too instead of being silently dropped.
+            if self.state_machine.state != MissionState.PATROL:
+                self.pending_candidates = representatives
         for pending in self.pending_candidates:
             self._log(LogEventType.INPUT_ACCEPTED, "Lower-priority candidate logged for later investigation",
                        detection_id=pending.detection_id, details={"status": "pending"})
@@ -282,7 +298,6 @@ class MissionController:
                    investigation_id=inv.investigation_id, detection_id=inv.detection_id)
         self._log(LogEventType.ALERT_CREATED, f"Confirmed {inv.hazard} alert created",
                    investigation_id=inv.investigation_id, alert_id=self.latest_alert.alert_id)
-        self.state_machine.transition(MissionState.PATROL)
         self.active_investigation = None
         return True
 
@@ -291,9 +306,27 @@ class MissionController:
         self.state_machine.transition(MissionState.REJECTED)
         self._log(LogEventType.INVESTIGATION_RESULT, f"Investigation {inv.investigation_id} REJECTED",
                    investigation_id=inv.investigation_id, detection_id=inv.detection_id)
-        self.state_machine.transition(MissionState.PATROL)
         self.active_investigation = None
         return True
+
+    def resume_patrol(self) -> bool:
+        """shared_policy.after_confirmed/after_rejected's explicit "command
+        RESUME_PATROL" step: moves CONFIRMED/REJECTED back to PATROL.
+
+        Deliberately NOT called from _confirm_investigation()/_reject_investigation()
+        themselves - folding it in there meant the state machine passed through
+        CONFIRMED/REJECTED and back to PATROL within a single synchronous call,
+        so nothing (e.g. main.py's orchestration loop reporting a status snapshot
+        to the dashboard) could ever observe investigation_status CONFIRMED/
+        REJECTED; get_dashboard_status() always saw PATROL/IDLE instead. Callers
+        must invoke this explicitly once they're done observing the resolved
+        investigation, per config's shared_policy.after_confirmed /
+        after_rejected."""
+        prior_state = self.state_machine.state
+        changed = self.state_machine.transition(MissionState.PATROL)
+        if changed:
+            self._log(LogEventType.STATE_CHANGE, f"{prior_state} -> PATROL")
+        return changed
 
     def handle_detection(self, detection: DetectionInput) -> bool:
         """Process a new detection. Returns whether it triggered a state change."""

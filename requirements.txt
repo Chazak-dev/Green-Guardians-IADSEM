@@ -4,3 +4,4 @@ ultralytics
 torch
 pyyaml
 pytest
+streamlit

@@ -132,6 +132,12 @@ class OrchestrationMission:
             if self.controller.handle_investigation_observation(representative):
                 break
 
+        # Report while the state machine still shows CONFIRMED/REJECTED (the
+        # resolved investigation_status a dashboard/log consumer needs to see),
+        # then explicitly command RESUME_PATROL per shared_policy.after_confirmed/
+        # after_rejected before continuing the route.
+        self._report_status(waypoint_index)
+        self.controller.resume_patrol()
         self._report_status(waypoint_index)
 
     def _return_and_land(self) -> None:
