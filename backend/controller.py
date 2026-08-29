@@ -297,7 +297,8 @@ class MissionController:
         self._log(LogEventType.INVESTIGATION_RESULT, f"Investigation {inv.investigation_id} CONFIRMED",
                    investigation_id=inv.investigation_id, detection_id=inv.detection_id)
         self._log(LogEventType.ALERT_CREATED, f"Confirmed {inv.hazard} alert created",
-                   investigation_id=inv.investigation_id, alert_id=self.latest_alert.alert_id)
+                   detection_id=inv.detection_id, investigation_id=inv.investigation_id,
+                   alert_id=self.latest_alert.alert_id)
         self.active_investigation = None
         return True
 
