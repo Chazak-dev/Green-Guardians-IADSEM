@@ -1,12 +1,11 @@
 """Frame validation and evidence-image helpers for the AI detection module."""
-from pathlib import Path
 from typing import List
 
 import cv2
 import numpy as np
 
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
-_EVIDENCE_DIR = _PROJECT_ROOT / "results" / "images"
+from config.paths import EVIDENCE_DIR as _EVIDENCE_DIR
+from config.paths import PROJECT_ROOT as _PROJECT_ROOT
 
 
 def validate_frame(frame: np.ndarray) -> None:

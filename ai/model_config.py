@@ -10,9 +10,9 @@ from typing import List, Optional
 
 import yaml
 
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
-_SETTINGS_PATH = _PROJECT_ROOT / "config" / "Green_Guardians_settings.yaml"
-_PRETRAINED_FALLBACK = _PROJECT_ROOT / "yolov8n.pt"
+from config.paths import CONFIG_PATH as _SETTINGS_PATH
+from config.paths import PROJECT_ROOT as _PROJECT_ROOT
+from config.paths import PRETRAINED_FALLBACK_MODEL as _PRETRAINED_FALLBACK
 
 
 @dataclass(frozen=True)

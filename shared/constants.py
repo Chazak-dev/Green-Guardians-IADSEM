@@ -8,6 +8,8 @@ plain values the config/JSON contracts expect (e.g. MissionState.PATROL ==
 """
 from enum import StrEnum
 
+from config.paths import LOG_PATH
+
 # Config: camera.width / camera.height - expected frame dimensions from
 # drone/camera.py's Webots camera device. Use these to sanity-check incoming
 # DetectionInput.image_width/image_height rather than trusting them blindly.
@@ -37,8 +39,9 @@ CONFIRMATION_TIMEOUT_SECONDS = 15
 POST_ALERT_SUPPRESSION_RADIUS_M = 5.0
 
 # Config: logging.output_path - JSONL file backend/logger.py appends one
-# LogEvent per line to.
-LOG_OUTPUT_PATH = "results/mission_log.jsonl"
+# LogEvent per line to. Absolute (via config/paths.py) so it's correct
+# regardless of the process's current working directory.
+LOG_OUTPUT_PATH = str(LOG_PATH)
 
 
 class MissionState(StrEnum):
