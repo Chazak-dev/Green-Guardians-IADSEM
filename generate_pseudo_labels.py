@@ -73,7 +73,11 @@ def main():
     if not source_images:
         raise SystemExit(f"No images found in {source_dir}")
 
-    output_dir = Path(args.output)
+    # Resolved to absolute: ultralytics' project= kwarg is only honoured
+    # as-given for absolute paths - a relative path gets silently nested
+    # under its own default runs/<task>/ root instead (observed with
+    # ultralytics 8.4.131), which breaks the yolo_run_dir assumption below.
+    output_dir = Path(args.output).resolve()
     images_dir = output_dir / "images"
     labels_dir = output_dir / "labels"
     preview_dir = output_dir / "predictions_preview"
@@ -104,10 +108,18 @@ def main():
         predict_kwargs["device"] = args.device
 
     processed = 0
-    for _ in model.predict(**predict_kwargs):
+    yolo_run_dir = None
+    for result in model.predict(**predict_kwargs):
+        if yolo_run_dir is None:
+            # Trust what ultralytics actually reports over the path we
+            # asked for - belt-and-braces alongside resolving output_dir
+            # above, in case a future version's project= handling shifts
+            # again.
+            yolo_run_dir = Path(result.save_dir)
         processed += 1
 
-    yolo_run_dir = output_dir / "_yolo_predict"
+    if yolo_run_dir is None:
+        raise SystemExit(f"No images were processed from {source_dir}")
     yolo_labels_dir = yolo_run_dir / "labels"
 
     # Ensure every image has a matching .txt (empty if nothing was detected

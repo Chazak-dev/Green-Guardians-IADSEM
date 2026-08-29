@@ -18,7 +18,8 @@ image_for_model/
 filtered_images/
 
 # YOLO training outputs (Person 1)
-
+pseudo_labels_output/
+yolo_dataset/
 
 # editor settings
 .vscode/
