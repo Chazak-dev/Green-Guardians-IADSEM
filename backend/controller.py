@@ -317,6 +317,34 @@ class MissionController:
         self.active_investigation = None
         return True
 
+    def transition_and_log(self, new_state: MissionState, *, event_type: str = LogEventType.STATE_CHANGE,
+                            message: Optional[str] = None) -> bool:
+        """Generalized version of resume_patrol()'s log-on-transition pattern,
+        for main.py's orchestration-driven transitions (TAKEOFF/PATROL/
+        RETURN_HOME/LANDING/LANDED/ERROR) - these advance the state machine
+        directly rather than through a react-to-input method, so without this
+        they never reach results/mission_log.jsonl at all and the dashboard's
+        mission_state can never show LANDED."""
+        prior_state = self.state_machine.state
+        changed = self.state_machine.transition(new_state)
+        if changed:
+            self._log(event_type, message or f"{prior_state} -> {new_state}")
+        return changed
+
+    def log_frame(self, image_path: str, source: str, detections: List[DetectionInput]) -> None:
+        """Records every captured frame's AI verdict, found-something or not.
+        Without this, a patrol frame where the AI saw nothing leaves no
+        trace anywhere - only detections that become an accepted/rejected
+        candidate or investigation observation get logged elsewhere - so the
+        dashboard's live camera feed would have nothing to show for most of
+        the mission."""
+        best = max(detections, key=lambda d: d.confidence, default=None)
+        message = f"AI verdict: {best.hazard} ({best.confidence:.2f})" if best else "AI verdict: clear"
+        self._log(LogEventType.FRAME_PROCESSED, message,
+                   details={"image_path": image_path, "source": source,
+                             "hazard": best.hazard if best else None,
+                             "confidence": best.confidence if best else None})
+
     def resume_patrol(self) -> bool:
         """shared_policy.after_confirmed/after_rejected's explicit "command
         RESUME_PATROL" step: moves CONFIRMED/REJECTED back to PATROL.

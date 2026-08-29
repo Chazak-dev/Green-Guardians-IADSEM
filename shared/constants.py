@@ -93,3 +93,7 @@ class LogEventType(StrEnum):
     INVESTIGATION_RESULT = "INVESTIGATION_RESULT"
     ALERT_CREATED = "ALERT_CREATED"
     ERROR = "ERROR"
+    # Every captured camera frame's AI verdict, found-something or not - not
+    # tied to a state change like the others above, so the dashboard's live
+    # camera feed has something to show for the AI's "nothing here" frames.
+    FRAME_PROCESSED = "FRAME_PROCESSED"

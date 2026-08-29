@@ -48,8 +48,9 @@ class FireSmokeDetector:
 
         detections = self._extract_detections(results, frame_id, timestamp, source, width, height)
 
-        if save_evidence and detections:
-            evidence_path = save_evidence_image(annotate_frame(frame, detections), frame_id)
+        if save_evidence:
+            annotated = annotate_frame(frame, detections) if detections else frame
+            evidence_path = save_evidence_image(annotated, frame_id)
             for det in detections:
                 det["image_path"] = evidence_path
 

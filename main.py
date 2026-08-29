@@ -8,14 +8,16 @@ Reuses drone/mission.py's PATROL_ROUTE/WAYPOINT_MAX_STEPS rather than
 redefining the waypoint list; PatrolMission itself is untouched and keeps
 working standalone for basic camera/flight smoke-testing.
 """
+import os
 from datetime import datetime, timezone
 from typing import List, Optional
 
 from ai.detector import FireSmokeDetector
 from backend.controller import MissionController
+from config.paths import EVIDENCE_DIR, PROJECT_ROOT
 from drone.drone_controller import DroneController
-from drone.mission import PATROL_ROUTE, WAYPOINT_MAX_STEPS
-from shared.constants import CONFIRMATION_FRESH_FRAMES_TO_CHECK, DetectionSource, MissionState
+from drone.mission import PATROL_ROUTE, PATROL_ROUTE_LONG, WAYPOINT_MAX_STEPS, WAYPOINT_MAX_STEPS_LONG
+from shared.constants import CONFIRMATION_FRESH_FRAMES_TO_CHECK, DetectionSource, LogEventType, MissionState
 from shared.models import DetectionInput, DroneStatus, Position, TargetHint
 
 _ISO_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
@@ -27,11 +29,12 @@ def _now_iso() -> str:
 
 class OrchestrationMission:
     def __init__(self, drone=None, detector=None, controller=None, waypoints=None,
-                 live_input: Optional[bool] = None):
+                 live_input: Optional[bool] = None, max_steps: int = WAYPOINT_MAX_STEPS):
         self.drone = drone or DroneController()
         self.detector = detector or FireSmokeDetector()
         self.controller = controller or MissionController()
         self.waypoints = waypoints or PATROL_ROUTE
+        self.max_steps = max_steps
         # get_dashboard_status()'s live_input_available: true when this
         # orchestration drives the real DroneController/FireSmokeDetector
         # (the default when drone/detector aren't overridden), false when a
@@ -58,15 +61,16 @@ class OrchestrationMission:
         error transitions are internally driven."""
         self.drone.connect()
         self.drone.arm()
-        self.controller.state_machine.transition(MissionState.TAKEOFF)
+        self.controller.transition_and_log(MissionState.TAKEOFF)
         self._report_status(waypoint_index=None)
         try:
-            self.drone.takeoff(altitude=self.waypoints[0]["position"][2], max_steps=WAYPOINT_MAX_STEPS)
+            self.drone.takeoff(altitude=self.waypoints[0]["position"][2], max_steps=self.max_steps)
         except RuntimeError as exc:
             print(f"Takeoff failed ({exc}); forcing ERROR - cannot patrol without a confirmed altitude.")
-            self.controller.state_machine.transition(MissionState.ERROR)
+            self.controller.transition_and_log(MissionState.ERROR, event_type=LogEventType.ERROR,
+                                                message=f"Takeoff failed: {exc}")
             return False
-        self.controller.state_machine.transition(MissionState.PATROL)
+        self.controller.transition_and_log(MissionState.PATROL)
         self._report_status(waypoint_index=None)
         return True
 
@@ -89,7 +93,7 @@ class OrchestrationMission:
         name = waypoint["name"]
         x, y, z = waypoint["position"]
         try:
-            position = self.drone.move_to(x, y, z, max_steps=WAYPOINT_MAX_STEPS)
+            position = self.drone.move_to(x, y, z, max_steps=self.max_steps)
         except RuntimeError as exc:
             print(f"Warning: could not reach waypoint {name!r} ({exc}); continuing from current position.")
             position = self.drone.get_position()
@@ -104,11 +108,18 @@ class OrchestrationMission:
         DetectionInput: field names match ai/detector.py's dict 1:1 except
         `position`, which the AI never produces and this caller must add."""
         frame, metadata = self.drone.camera.capture_frame_metadata(position)
+        frame_id = f"{metadata.frame_id}-{frame_label}"
         raw = self.detector.detect(
-            frame, frame_id=f"{metadata.frame_id}-{frame_label}", timestamp=metadata.timestamp,
+            frame, frame_id=frame_id, timestamp=metadata.timestamp,
             source=source, save_evidence=True,
         )
-        return [DetectionInput(position=Position(*position), **det) for det in raw]
+        detections = [DetectionInput(position=Position(*position), **det) for det in raw]
+        # ai/detector.py's save_evidence_image() names files by frame_id -
+        # recomputed here (not returned by detect()) so a "clear" frame still
+        # gets logged with its image, not just ones that found something.
+        image_path = str((EVIDENCE_DIR / f"{frame_id}.jpg").relative_to(PROJECT_ROOT))
+        self.controller.log_frame(image_path, source, detections)
+        return detections
 
     def _investigate(self, waypoint_index: int) -> None:
         """drone.investigation_maneuver + shared_policy.confirmation: pause,
@@ -151,18 +162,22 @@ class OrchestrationMission:
 
     def _return_and_land(self) -> None:
         """PATROL -> RETURN_HOME -> LANDING -> LANDED."""
-        self.controller.state_machine.transition(MissionState.RETURN_HOME)
+        self.controller.transition_and_log(MissionState.RETURN_HOME)
         self._report_status(waypoint_index=None)
-        self.controller.state_machine.transition(MissionState.LANDING)
+        self.controller.transition_and_log(MissionState.LANDING)
         try:
-            self.drone.land(max_steps=WAYPOINT_MAX_STEPS)
+            self.drone.land(max_steps=self.max_steps)
         except RuntimeError as exc:
             print(f"Warning: land() could not converge ({exc}); forcing ERROR.")
-            self.controller.state_machine.transition(MissionState.ERROR)
+            self.controller.transition_and_log(MissionState.ERROR, event_type=LogEventType.ERROR,
+                                                message=f"Landing failed: {exc}")
             return
-        self.controller.state_machine.transition(MissionState.LANDED)
+        self.controller.transition_and_log(MissionState.LANDED)
         self._report_status(waypoint_index=None)
 
 
 if __name__ == "__main__":
-    OrchestrationMission().run()
+    if os.environ.get("GG_LONG_PATROL"):
+        OrchestrationMission(waypoints=PATROL_ROUTE_LONG, max_steps=WAYPOINT_MAX_STEPS_LONG).run()
+    else:
+        OrchestrationMission().run()

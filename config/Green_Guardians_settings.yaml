@@ -382,7 +382,7 @@ backend_contracts:
     required_fields:
       event_id: string
       timestamp: "string; ISO-8601 UTC"
-      event_type: "STATE_CHANGE | INPUT_ACCEPTED | INPUT_REJECTED | INVESTIGATION_RESULT | ALERT_CREATED | ERROR"
+      event_type: "STATE_CHANGE | INPUT_ACCEPTED | INPUT_REJECTED | INVESTIGATION_RESULT | ALERT_CREATED | ERROR | FRAME_PROCESSED"
       message: string
       mission_state: "IDLE | TAKEOFF | PATROL | HAZARD_DETECTED | INVESTIGATING | CONFIRMED | REJECTED | RETURN_HOME | LANDING | LANDED | ERROR"
     optional_fields:
@@ -429,6 +429,7 @@ logging:
     - investigation_results
     - alerts
     - errors
+    - frame_captures
   required_log_fields: [timestamp, event_type, message]
 
 dashboard:

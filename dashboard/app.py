@@ -1,12 +1,14 @@
 """Green Guardians - Person 4 Streamlit dashboard.
 
-This dashboard is intentionally read-only and requires NO changes to the
-existing Green Guardians source code.
-
-It reads only artifacts that the current repository already produces:
+This dashboard reads the artifacts the rest of the project already produces:
   - config/Green_Guardians_settings.yaml
   - results/mission_log.jsonl
   - results/images/**
+
+It also provides the project's one-step entry point: the "Run Automated
+Mission" button (see mission_runner.py) launches a full live mission in a
+headless Webots instance and shows the resulting log/alerts here once it
+finishes - no manual Webots interaction or terminal step required.
 
 Important limitation of the current architecture:
 main.py and MissionController keep the live DashboardStatusOutput in memory.
@@ -26,6 +28,8 @@ from typing import Any, Dict, Iterable, List, Optional
 
 import streamlit as st
 import yaml
+
+from mission_runner import start_mission_async
 
 
 # -----------------------------------------------------------------------------
@@ -192,9 +196,56 @@ def render_body() -> None:
 
     st.markdown(f'<div class="main-title">🌿 {title} Dashboard</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="subtitle">Person 4 • Read-only visualization of the current project outputs</div>',
+        '<div class="subtitle">Person 4 • Mission control and visualization</div>',
         unsafe_allow_html=True,
     )
+
+    # -------------------------------------------------------------------------
+    # One-step mission launch - runs on a background thread (see
+    # mission_runner.start_mission_async) so this doesn't block the page.
+    # render_body is wrapped in st.fragment(run_every=REFRESH_SECONDS) below,
+    # so every ~1s it re-reads st.session_state.mission_run's status AND
+    # re-reads results/mission_log.jsonl (backend/logger.py appends to that
+    # file as the mission actually happens) - detections/state changes show
+    # up here within about a second of occurring, not only once the whole
+    # mission finishes.
+    # -------------------------------------------------------------------------
+    if "mission_run" not in st.session_state:
+        st.session_state.mission_run = None
+    run = st.session_state.mission_run
+    mission_in_progress = run is not None and run.status == "running"
+
+    run_col, long_run_col, _ = st.columns([1, 1.4, 1.6])
+    with run_col:
+        run_clicked = st.button(
+            "🛰️ Mission running..." if mission_in_progress else "▶ Run Automated Mission",
+            type="primary", width="stretch", disabled=mission_in_progress,
+        )
+    with long_run_col:
+        long_run_clicked = st.button(
+            "🛰️ Mission running..." if mission_in_progress else "▶ Run Long Patrol Mission (Fire + Smoke Tour)",
+            width="stretch", disabled=mission_in_progress,
+        )
+    if (run_clicked or long_run_clicked) and not mission_in_progress:
+        st.session_state.mission_run = start_mission_async(long_patrol=long_run_clicked)
+        st.cache_data.clear()
+        run = st.session_state.mission_run
+
+    if run is not None:
+        if run.status == "running":
+            st.info("Mission in progress in Webots (a window should have opened - watch the drone fly the "
+                     "patrol route there). This page updates live as events happen below.")
+        else:
+            if run.status == "success":
+                st.success("Mission finished. Results below.")
+            elif run.status == "timed_out":
+                st.error("Mission timed out before finishing.")
+            else:
+                st.error(f"Mission exited with code {run.exit_code}.")
+            with st.expander("Mission run output", expanded=(run.status != "success")):
+                st.text(run.stdout or "(no stdout)")
+                if run.stderr:
+                    st.text(run.stderr)
 
     # -------------------------------------------------------------------------
     # Sidebar: project/config summary
@@ -227,8 +278,8 @@ def render_body() -> None:
     # -------------------------------------------------------------------------
     if not events and not images:
         st.info(
-            "No mission outputs have been written yet. Start the existing "
-            "Green Guardians mission with `python main.py`; this dashboard "
+            "No mission outputs have been written yet. Click ▶ Run Automated "
+            "Mission above to fly a full mission in Webots; this dashboard "
             "will read the resulting mission log and evidence images."
         )
         st.caption(f"Watching {repo_relative(str(LOG_PATH))} and {repo_relative(str(EVIDENCE_DIR))}")
@@ -250,6 +301,38 @@ def render_body() -> None:
     c3.metric("Investigations resolved", investigation_count)
     c4.metric("Errors", error_count)
     st.caption(f"Last persisted backend event: {pretty_time(last_time)}")
+
+    # -------------------------------------------------------------------------
+    # Live camera feed: every captured frame + the AI's verdict, newest
+    # first. FRAME_PROCESSED events are written for every frame (clear or
+    # not) by backend/controller.py's log_frame() - this is what makes the
+    # AI's per-frame decisions visible live instead of only the ones that
+    # happened to trigger a state change.
+    # -------------------------------------------------------------------------
+    st.subheader("🎥 Live camera feed")
+    frame_events = sorted(
+        (e for e in events if e.get("event_type") == "FRAME_PROCESSED"),
+        key=lambda e: e.get("timestamp", ""), reverse=True,
+    )[:12]
+    if not frame_events:
+        st.caption("No frames captured yet.")
+    else:
+        feed_cols = st.columns(4)
+        for index, event in enumerate(frame_events):
+            details = event.get("details") or {}
+            hazard = details.get("hazard")
+            confidence = details.get("confidence")
+            image_path = details.get("image_path")
+            with feed_cols[index % 4]:
+                data = read_image_as_bytes(str(PROJECT_ROOT / image_path)) if image_path else None
+                if data:
+                    st.image(data, width="stretch")
+                if hazard:
+                    icon = "🔥" if hazard == "fire" else "💨"
+                    st.error(f"{icon} {hazard.upper()} {confidence:.2f}" if confidence is not None else f"{icon} {hazard.upper()}")
+                else:
+                    st.success("✅ Clear")
+                st.caption(f"{details.get('source', '—')} • {pretty_time(event.get('timestamp'))}")
 
     # -------------------------------------------------------------------------
     # Latest activity + latest alert

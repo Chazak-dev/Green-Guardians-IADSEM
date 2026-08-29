@@ -188,7 +188,7 @@ class LogEvent:
     # message to another person).
     event_id: str
     timestamp: str
-    event_type: str  # STATE_CHANGE | INPUT_ACCEPTED | INPUT_REJECTED | INVESTIGATION_RESULT | ALERT_CREATED | ERROR
+    event_type: str  # STATE_CHANGE | INPUT_ACCEPTED | INPUT_REJECTED | INVESTIGATION_RESULT | ALERT_CREATED | ERROR | FRAME_PROCESSED
     message: str
     mission_state: str
     detection_id: Optional[str] = None

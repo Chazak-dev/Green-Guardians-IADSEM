@@ -46,6 +46,38 @@ PATROL_ROUTE = [
 # than the short in-place moves that default was originally sized for.
 WAYPOINT_MAX_STEPS = 20000
 
+# Long patrol: matches drone/webots_world/green_guardians_long_patrol.wbt, a
+# separate/longer test world (not the one PATROL_ROUTE above flies). 6 fire/
+# smoke sites (alternating fire/smoke) sit on a 55m-radius hexagon around the
+# origin; each waypoint sits at the same proven ~10.5m camera standoff
+# distance used by PATROL_ROUTE above (radius 44.5m, same angle as its
+# site), visited in a consistent 60 degree rotational order so no leg needs
+# anywhere near the ~180 degree turn the heading controller can't reliably
+# converge on - the one sharper turn (sw -> return_base, ~120 degrees) is
+# still under the ~135 degree magnitude PATROL_ROUTE's patrol_west ->
+# patrol_south leg already proved converges. The first leg (start -> west)
+# needs no turn at all: it continues straight from the drone's initial
+# heading, same as PATROL_ROUTE's first leg does.
+#
+# Same Pine PROTO as PATROL_ROUTE, so the same tree-clearance altitude
+# applies.
+CRUISE_ALTITUDE_LONG = 12.0
+
+PATROL_ROUTE_LONG = [
+    {"name": "west_smoke", "position": (-44.5, 0.0, CRUISE_ALTITUDE_LONG)},    # continues straight from initial heading
+    {"name": "nw_fire", "position": (-22.25, 38.54, CRUISE_ALTITUDE_LONG)},
+    {"name": "ne_smoke", "position": (22.25, 38.54, CRUISE_ALTITUDE_LONG)},
+    {"name": "north_fire", "position": (44.5, 0.0, CRUISE_ALTITUDE_LONG)},
+    {"name": "se_smoke", "position": (22.25, -38.54, CRUISE_ALTITUDE_LONG)},
+    {"name": "sw_fire", "position": (-22.25, -38.54, CRUISE_ALTITUDE_LONG)},
+    {"name": "return_base", "position": (0.0, 0.0, CRUISE_ALTITUDE_LONG)},
+]
+
+# Legs here (~40-55m) are notably longer than PATROL_ROUTE's (~5-10m) -
+# starts generously large; tune down/up based on the live test run's actual
+# step counts if needed.
+WAYPOINT_MAX_STEPS_LONG = 50000
+
 
 class PatrolMission:
     """Flies a drone through a list of named waypoints, capturing a frame at each one."""
