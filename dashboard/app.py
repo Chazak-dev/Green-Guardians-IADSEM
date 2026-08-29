@@ -218,7 +218,7 @@ def render_body() -> None:
         )
         st.caption(f"Configured refresh: {refresh_seconds}s")
 
-        if st.button("🔄 Refresh now", use_container_width=True):
+        if st.button("🔄 Refresh now", width="stretch"):
             st.cache_data.clear()
             st.rerun()
 
@@ -271,7 +271,7 @@ def render_body() -> None:
                     "Alert": event.get("alert_id") or "—",
                 }
             )
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+        st.dataframe(rows, width="stretch", hide_index=True)
 
     with right:
         st.subheader("Latest confirmed alert")
@@ -306,7 +306,7 @@ def render_body() -> None:
             with col:
                 data = read_image_as_bytes(image_path)
                 if data:
-                    st.image(data, caption=repo_relative(image_path), use_container_width=True)
+                    st.image(data, caption=repo_relative(image_path), width="stretch")
                 else:
                     st.warning(f"Could not read {repo_relative(image_path)}")
 
@@ -315,19 +315,20 @@ def render_body() -> None:
     # -------------------------------------------------------------------------
     st.subheader("Configured mission information")
     mission = config.get("drone", {}) if isinstance(config, dict) else {}
-    route = mission.get("patrol_route", []) if isinstance(mission, dict) else []
-    if route:
+    patrol_route = mission.get("patrol_route", {}) if isinstance(mission, dict) else {}
+    waypoints = patrol_route.get("waypoints", []) if isinstance(patrol_route, dict) else []
+    if waypoints:
         route_rows = []
-        for item in route:
+        for item in waypoints:
             route_rows.append(
                 {
                     "Waypoint": item.get("name", "—"),
-                    "X (m)": item.get("position", [None, None, None])[0],
-                    "Y (m)": item.get("position", [None, None, None])[1],
-                    "Z / altitude (m)": item.get("position", [None, None, None])[2],
+                    "X (m)": item.get("x"),
+                    "Y (m)": item.get("y"),
+                    "Z / altitude (m)": item.get("z"),
                 }
             )
-        st.dataframe(route_rows, use_container_width=True, hide_index=True)
+        st.dataframe(route_rows, width="stretch", hide_index=True)
         st.caption("Coordinates are Webots world coordinates in metres, not GPS latitude/longitude.")
 
     # -------------------------------------------------------------------------
@@ -341,14 +342,14 @@ def render_body() -> None:
 # -----------------------------------------------------------------------------
 # Top-level execution + optional auto-refresh support.
 # Streamlit versions with st.fragment can refresh this section without adding
-# any extra dependency. Older Streamlit versions still work via the button.
+# any extra dependency. Older Streamlit versions still work via a plain call.
+# st.fragment is a decorator (it wraps a function), not a context manager, so
+# it must be applied to render_body itself rather than used in a `with` block.
 # -----------------------------------------------------------------------------
 if hasattr(st, "fragment"):
     try:
-        refresh_value = st.fragment(run_every=REFRESH_SECONDS)
+        render_body = st.fragment(run_every=REFRESH_SECONDS)(render_body)
     except TypeError:
-        refresh_value = st.fragment
-    with refresh_value():
-        render_body()
-else:
-    render_body()
+        render_body = st.fragment(render_body)
+
+render_body()
