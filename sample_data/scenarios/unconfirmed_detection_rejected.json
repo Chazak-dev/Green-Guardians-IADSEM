@@ -1,0 +1,25 @@
+{
+  "name": "unconfirmed_detection_rejected",
+  "description": "A fire candidate at patrol_west crosses the 0.60 trigger threshold and opens an investigation, but none of the 5 fresh investigation frames reach the 0.65 confirmation confidence - REJECTED once the frame budget is exhausted.",
+  "drone_start_position": {"x": -15.9, "y": -7.0, "z": 12.0},
+  "steps": [
+    {
+      "phase": "patrol",
+      "detections": [
+        {"detection_id": "ud-det-1", "timestamp": "2026-01-01T09:10:00Z", "hazard": "fire", "confidence": 0.70, "source": "patrol", "position": {"x": -15.9, "y": -7.0, "z": 12.0}, "bbox": [220, 160, 380, 320], "image_width": 640, "image_height": 480}
+      ]
+    },
+    {"phase": "investigation", "detection": {"detection_id": "ud-obs-1", "timestamp": "2026-01-01T09:10:05Z", "hazard": "fire", "confidence": 0.50, "source": "investigation", "position": {"x": -15.9, "y": -7.0, "z": 12.0}, "bbox": [220, 160, 380, 320], "image_width": 640, "image_height": 480}},
+    {"phase": "investigation", "detection": {"detection_id": "ud-obs-2", "timestamp": "2026-01-01T09:10:07Z", "hazard": "fire", "confidence": 0.60, "source": "investigation", "position": {"x": -15.9, "y": -7.0, "z": 12.0}, "bbox": [225, 165, 385, 325], "image_width": 640, "image_height": 480}},
+    {"phase": "investigation", "detection": null},
+    {"phase": "investigation", "detection": {"detection_id": "ud-obs-4", "timestamp": "2026-01-01T09:10:11Z", "hazard": "fire", "confidence": 0.55, "source": "investigation", "position": {"x": -15.9, "y": -7.0, "z": 12.0}, "bbox": [215, 158, 378, 318], "image_width": 640, "image_height": 480}},
+    {"phase": "investigation", "detection": {"detection_id": "ud-obs-5", "timestamp": "2026-01-01T09:10:13Z", "hazard": "fire", "confidence": 0.62, "source": "investigation", "position": {"x": -15.9, "y": -7.0, "z": 12.0}, "bbox": [218, 162, 382, 322], "image_width": 640, "image_height": 480}}
+  ],
+  "expected_outcome": {
+    "investigation_triggered": true,
+    "investigation_result": "REJECTED",
+    "final_mission_state": "PATROL",
+    "alert_created": false,
+    "confirmed_alert_count": 0
+  }
+}

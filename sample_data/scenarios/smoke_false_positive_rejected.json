@@ -1,0 +1,25 @@
+{
+  "name": "smoke_false_positive_rejected",
+  "description": "A smoke reading near forest_edge just clears the 0.60 trigger threshold, but turns out to be a false positive (haze/mist): none of the 5 fresh investigation frames reach 0.65 confidence, so the investigation is REJECTED.",
+  "drone_start_position": {"x": -9.0, "y": -3.5, "z": 12.0},
+  "steps": [
+    {
+      "phase": "patrol",
+      "detections": [
+        {"detection_id": "sf-det-1", "timestamp": "2026-01-01T09:30:00Z", "hazard": "smoke", "confidence": 0.65, "source": "patrol", "position": {"x": -9.0, "y": -3.5, "z": 12.0}, "bbox": [150, 80, 340, 220], "image_width": 640, "image_height": 480}
+      ]
+    },
+    {"phase": "investigation", "detection": {"detection_id": "sf-obs-1", "timestamp": "2026-01-01T09:30:05Z", "hazard": "smoke", "confidence": 0.40, "source": "investigation", "position": {"x": -9.0, "y": -3.5, "z": 12.0}, "bbox": [150, 80, 340, 220], "image_width": 640, "image_height": 480}},
+    {"phase": "investigation", "detection": null},
+    {"phase": "investigation", "detection": {"detection_id": "sf-obs-3", "timestamp": "2026-01-01T09:30:09Z", "hazard": "smoke", "confidence": 0.30, "source": "investigation", "position": {"x": -9.0, "y": -3.5, "z": 12.0}, "bbox": [148, 78, 338, 218], "image_width": 640, "image_height": 480}},
+    {"phase": "investigation", "detection": null},
+    {"phase": "investigation", "detection": {"detection_id": "sf-obs-5", "timestamp": "2026-01-01T09:30:13Z", "hazard": "smoke", "confidence": 0.55, "source": "investigation", "position": {"x": -9.0, "y": -3.5, "z": 12.0}, "bbox": [152, 82, 342, 222], "image_width": 640, "image_height": 480}}
+  ],
+  "expected_outcome": {
+    "investigation_triggered": true,
+    "investigation_result": "REJECTED",
+    "final_mission_state": "PATROL",
+    "alert_created": false,
+    "confirmed_alert_count": 0
+  }
+}

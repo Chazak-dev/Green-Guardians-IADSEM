@@ -1,0 +1,27 @@
+{
+  "name": "no_hazard_continue_patrol",
+  "description": "Three ordinary patrol frames: two low-confidence noise readings below the 0.60 candidate-trigger threshold, and one frame with nothing detected at all. No candidate should ever be created; the mission stays in PATROL throughout.",
+  "drone_start_position": {"x": -1.0, "y": -0.5, "z": 12.0},
+  "steps": [
+    {
+      "phase": "patrol",
+      "detections": [
+        {"detection_id": "nh-det-1", "timestamp": "2026-01-01T09:00:00Z", "hazard": "smoke", "confidence": 0.22, "source": "patrol", "position": {"x": -1.0, "y": -0.5, "z": 12.0}, "bbox": [40, 30, 90, 70], "image_width": 640, "image_height": 480}
+      ]
+    },
+    {
+      "phase": "patrol",
+      "detections": [
+        {"detection_id": "nh-det-2", "timestamp": "2026-01-01T09:00:05Z", "hazard": "fire", "confidence": 0.35, "source": "patrol", "position": {"x": -2.0, "y": -1.0, "z": 12.0}, "bbox": [300, 220, 340, 260], "image_width": 640, "image_height": 480}
+      ]
+    },
+    {"phase": "patrol", "detections": []}
+  ],
+  "expected_outcome": {
+    "investigation_triggered": false,
+    "investigation_result": null,
+    "final_mission_state": "PATROL",
+    "alert_created": false,
+    "confirmed_alert_count": 0
+  }
+}
