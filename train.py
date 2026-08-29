@@ -2,11 +2,12 @@
 of the ai/ package - training is a one-off developer action, not something
 the detector needs at runtime.
 
-Hyperparameters match the Phase 4 baseline agreed for this run: epochs=100
-with patience=20 for early stopping (rather than running the full 100
-blindly), imgsz=640 to match config/Green_Guardians_settings.yaml's ai:
-baseline, seed fixed for a reproducible run to compare future tuning
-against. device defaults to "cpu" - this machine has no CUDA GPU
+Hyperparameters match the Phase 4 baseline agreed for this run: epochs=10
+with patience=20 for early stopping (patience exceeds epochs, so early
+stopping is effectively a no-op unless --epochs is raised for a longer run),
+imgsz=640 to match config/Green_Guardians_settings.yaml's ai: baseline, seed
+fixed for a reproducible run to compare future tuning against. device
+defaults to "cpu" - this machine has no CUDA GPU
 (torch.cuda.is_available() == False).
 """
 import argparse

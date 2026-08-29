@@ -26,11 +26,20 @@ def _now_iso() -> str:
 
 
 class OrchestrationMission:
-    def __init__(self, drone=None, detector=None, controller=None, waypoints=None):
+    def __init__(self, drone=None, detector=None, controller=None, waypoints=None,
+                 live_input: Optional[bool] = None):
         self.drone = drone or DroneController()
         self.detector = detector or FireSmokeDetector()
         self.controller = controller or MissionController()
         self.waypoints = waypoints or PATROL_ROUTE
+        # get_dashboard_status()'s live_input_available: true when this
+        # orchestration drives the real DroneController/FireSmokeDetector
+        # (the default when drone/detector aren't overridden), false when a
+        # caller (e.g. tests) injected fakes instead. `live_input` overrides
+        # that inference explicitly when the caller knows better.
+        self.controller.live_input_available = (
+            live_input if live_input is not None else (drone is None and detector is None)
+        )
 
     def run(self):
         """Full mission lifecycle: mission_controller.normal_flow end-to-end."""

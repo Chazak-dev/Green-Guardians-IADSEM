@@ -137,6 +137,13 @@ class MissionController:
         self.logger = Logger()
         self.pending_candidates: List[DetectionInput] = []  # lower-priority incidents from handle_detections()
         self.active_investigation: Optional[_ActiveInvestigation] = None
+        # get_dashboard_status()'s live_input_available: the orchestration
+        # loop (main.py's OrchestrationMission) is the only thing that knows
+        # whether it's driving real drone/AI hardware or injected fakes, so
+        # it sets this directly rather than this class guessing. Defaults to
+        # False (mock/unknown) until told otherwise, per
+        # backend_policy.failure_handling.unavailable_input.
+        self.live_input_available: bool = False
 
     def _log(self, event_type: str, message: str, *, detection_id=None,
              investigation_id=None, alert_id=None, details=None) -> None:
@@ -390,7 +397,7 @@ class MissionController:
             drone_position=self.latest_drone_status.position,
             altitude_m=self.latest_drone_status.altitude_m,
             backend_available=True,
-            live_input_available=False,  # TODO(BE-08/BE-09): flip once real ai/drone integration exists
+            live_input_available=self.live_input_available,
             investigation_status=_INVESTIGATION_STATUS_BY_MISSION_STATE.get(
                 self.state_machine.state, InvestigationStatus.IDLE
             ),
