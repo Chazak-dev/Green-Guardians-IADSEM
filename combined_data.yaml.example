@@ -31,10 +31,12 @@
 #      training. roboflow_dataset/data.yaml already confirmed to use this
 #      order; the real dataset hasn't been checked from this machine.
 #
-# Then, for an overnight run:
-#   python train.py --data combined_data.yaml --weights models/fire_smoke_real_only.pt --epochs 100 --batch 16
-#
-# (--device auto-detects the GPU, no need to pass it.)
+# Then, for an overnight run - train.py's defaults now already match this
+# exact recipe (data=combined_data.yaml, weights=fire_smoke_real_only.pt,
+# epochs=100, batch=16, device auto-detected), so once combined_data.yaml
+# exists with real paths filled in, just run:
+#   python train.py
+# Pass any flag explicitly (e.g. --epochs 50) to override its default.
 
 train:
   - <ABSOLUTE PATH TO REAL DATASET>/images/train
