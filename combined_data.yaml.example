@@ -1,0 +1,49 @@
+# Combined-dataset template: real photos (Kaggle) + this project's reviewed
+# simulator frames (roboflow_dataset/), so training doesn't forget what the
+# model already learned from real photos while adding the sim data - unlike
+# training on sim data alone in a separate run, which was confirmed this
+# session to wipe out real-photo detection entirely (see conversation:
+# train-11 went from correctly calling a real photo "smoke 0.87" to no
+# detection at all, after 100 epochs on sim-only data).
+#
+# IMPORTANT: models/fire_smoke.pt is currently the sim-only train-11 model
+# (promoted to production because it performs much better in the actual
+# Webots app - see conversation). It is NOT the right starting point for
+# this run. The original real-photo-only checkpoint is preserved at
+# models/fire_smoke_real_only.pt specifically for this - use that as
+# --weights below, not models/fire_smoke.pt.
+#
+# Setup on the training machine:
+#   1. Copy this repo's roboflow_dataset/ folder over if it isn't already on
+#      this machine (it's gitignored - not in git history - so it has to be
+#      copied by hand: zip it up, or copy the folder directly).
+#   2. Download the real dataset from the Kaggle link in README.md if you
+#      don't already have it locally on this machine.
+#   3. Copy this file to combined_data.yaml and fill in the two <...>
+#      placeholders below with real absolute paths on THIS machine
+#      (ultralytics has been observed resolving a relative `path:`/train/val
+#      against the current working directory rather than this file's own
+#      directory, which silently breaks things if you run training from
+#      anywhere other than this file's folder - use absolute paths).
+#   4. IMPORTANT: check the real dataset's own data.yaml `names:` list
+#      matches this order (0: fire, 1: smoke) before training - if it
+#      doesn't, the classes will be silently swapped/corrupted during
+#      training. roboflow_dataset/data.yaml already confirmed to use this
+#      order; the real dataset hasn't been checked from this machine.
+#
+# Then, for an overnight run:
+#   python train.py --data combined_data.yaml --weights models/fire_smoke_real_only.pt --epochs 100 --batch 16
+#
+# (--device auto-detects the GPU, no need to pass it.)
+
+train:
+  - <ABSOLUTE PATH TO REAL DATASET>/images/train
+  - <ABSOLUTE PATH TO THIS REPO>/roboflow_dataset/train/images
+val:
+  - <ABSOLUTE PATH TO REAL DATASET>/images/val
+  - <ABSOLUTE PATH TO THIS REPO>/roboflow_dataset/valid/images
+
+nc: 2
+names:
+  0: fire
+  1: smoke

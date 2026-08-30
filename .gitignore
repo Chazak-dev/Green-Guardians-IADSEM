@@ -20,6 +20,11 @@ filtered_images/
 # YOLO training outputs (Person 1)
 pseudo_labels_output/
 yolo_dataset/
+roboflow_dataset/
+
+# Machine-specific dataset paths - filled in from combined_data.yaml.example,
+# not meant to be shared (real paths differ per machine)
+combined_data.yaml
 
 # editor settings
 .vscode/
