@@ -310,12 +310,15 @@ def render_body() -> None:
     # happened to trigger a state change.
     # -------------------------------------------------------------------------
     st.subheader("🎥 Live camera feed")
-    frame_events = sorted(
-        (e for e in events if e.get("event_type") == "FRAME_PROCESSED"),
-        key=lambda e: e.get("timestamp", ""), reverse=True,
-    )[:12]
+    frame_events = [e for e in events if e.get("event_type") == "FRAME_PROCESSED"]
+    if run is not None:
+        # Once a mission has been launched from this dashboard, only show
+        # its own frames - otherwise leftover frames from earlier runs
+        # linger here until enough new ones push them out of the top 12.
+        frame_events = [e for e in frame_events if e.get("timestamp", "") >= run.started_at_utc]
+    frame_events = sorted(frame_events, key=lambda e: e.get("timestamp", ""), reverse=True)[:12]
     if not frame_events:
-        st.caption("No frames captured yet.")
+        st.caption("No frames captured yet." if run is None else "Waiting for the first frame...")
     else:
         feed_cols = st.columns(4)
         for index, event in enumerate(frame_events):

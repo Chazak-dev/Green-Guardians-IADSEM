@@ -25,6 +25,7 @@ import sys
 import threading
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -128,6 +129,11 @@ class MissionRun:
     stdout: str = ""
     stderr: str = ""
     started_at: float = field(default_factory=time.monotonic)
+    # Wall-clock UTC, same format as backend/logger.py's LogEvent timestamps
+    # (main.py's _now_iso()) - lets the dashboard filter results/mission_log.jsonl
+    # down to just this run's events (e.g. the live camera feed), instead of
+    # showing whatever's most recent across every mission ever run.
+    started_at_utc: str = field(default_factory=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
     finished_at: Optional[float] = None
 
 
